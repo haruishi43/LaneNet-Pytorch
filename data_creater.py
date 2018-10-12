@@ -13,7 +13,6 @@ CFG = global_config.cfg
 import matplotlib.pyplot as plt
 
 
-
 def init_args():
     '''
     Arguments
@@ -22,10 +21,10 @@ def init_args():
     parser = argparse.ArgumentParser()
 
     # Arguments for saving
-    parser.add_argument('--train-root', type=str, default='./data/training_data/', help='Training dataset path')
-    parser.add_argument('--image-path', type=str, default='image/', help='Directory name for images')
-    parser.add_argument('--instance-path', type=str, default='gt_image_instance/', help='Directory name of instance images')
-    parser.add_argument('--binary-path', type=str, default='gt_image_binary/', help='Directory name of binary images')
+    parser.add_argument('--train-root', type=str, default='/home/ubuntu/dev/LaneNet-Pytorch/data/training_data/', help='Training dataset path (absolute path)')
+    parser.add_argument('--image-path', type=str, default='image/', help='Directory name for images (relative to training)')
+    parser.add_argument('--instance-path', type=str, default='gt_image_instance/', help='Directory name of instance images (relative to training)')
+    parser.add_argument('--binary-path', type=str, default='gt_image_binary/', help='Directory name of binary images (relative to training)')
 
     # Arguments for dataset source
     parser.add_argument('--dataset-path', type=str, default='/home/ubuntu/mydata/tusimple/train_set/', help='root dir of the dataset that contains video clips and json for label')
@@ -92,7 +91,6 @@ def create_images(original, lanes):
     return binary, instance
 
 
-
 if __name__ == '__main__':
 
     # init args
@@ -108,7 +106,7 @@ if __name__ == '__main__':
 
     # list dates:
     jsons = get_gt_json(args)
-    print("files: ", len(jsons))
+    print('Total json files: ', len(jsons))
 
     # create a text file for saving directory
     text_filename = args.train_root + 'train.txt'
@@ -136,8 +134,7 @@ if __name__ == '__main__':
             binary, instance = create_images(img, gt_lanes)
 
             # create save path for each image
-            #FIXME: args.train_root is not absolute path but relative (may cause trouble later)
-            img_name = '0'*(4-len(str(num))) + str(num) + '.png'
+            img_name = '0'*(4-len(str(num))) + str(num) + '.png'  # 4 digits 
             source_img = args.train_root + args.image_path + img_name
             binary_img = args.train_root + args.binary_path + img_name
             instance_img = args.train_root + args.instance_path + img_name
@@ -154,4 +151,4 @@ if __name__ == '__main__':
 
             num += 1
 
-    print(num)
+    print('Total images: ', num)

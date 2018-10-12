@@ -9,4 +9,7 @@
 - Encoder
     - Use VGG16 to encode input RGB image
     - Output the result of the last 3 pooling layer (as said in the paper)
+- Decoder
+    - Use conv and deconv layers
+    - Output should be pixel embeddings and binary segmentation
     

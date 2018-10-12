@@ -57,7 +57,8 @@ def create_data_structure(args):
     dirs = [args.train_root, img_path, instance_path, binary_path]
 
     for d in dirs:
-        os.mkdir(d)
+        if not os.path.exists(d):
+            os.mkdir(d)
 
     return img_path, instance_path, binary_path
 
@@ -100,16 +101,19 @@ if __name__ == '__main__':
 
     # delete all files from these directories before starting
     #FIXME: may not need this function
-    #delete_files(args.train_root)
+    delete_files(args.train_root)
 
     # create directories to save training images
-    #create_data_structure(args)
+    create_data_structure(args)
 
     # list dates:
     jsons = get_gt_json(args)
     print("files: ", len(jsons))
 
-    num = 0
+    # create a text file for saving directory
+    text_filename = args.train_root + 'train.txt'
+
+    num = 0  # counter
     for i in range(len(jsons)):
         # should yield total of 3626 images
         gt_json = jsons[i]
@@ -132,7 +136,8 @@ if __name__ == '__main__':
             binary, instance = create_images(img, gt_lanes)
 
             # create save path for each image
-            img_name = str(num) + '.jpg'
+            #FIXME: args.train_root is not absolute path but relative (may cause trouble later)
+            img_name = '0'*(4-len(str(num))) + str(num) + '.png'
             source_img = args.train_root + args.image_path + img_name
             binary_img = args.train_root + args.binary_path + img_name
             instance_img = args.train_root + args.instance_path + img_name
@@ -141,6 +146,11 @@ if __name__ == '__main__':
             cv2.imwrite(source_img, img)
             cv2.imwrite(binary_img, binary)
             cv2.imwrite(instance_img, instance)
+
+            # add to txt file:
+            data_line = source_img + ' ' + binary_img + ' ' + instance_img + '\n'
+            with open(text_filename, 'a') as f:
+                f.write(data_line)
 
             num += 1
 

@@ -18,22 +18,24 @@ class FCNDecoder(nn.Module):
         
         self.train()
         
-    def forward(self, tensor_dict):
+    def forward(self, tensor):
         
-        x = tensor_dict['pool5']
-        score = self.conv1(x)
+        x5 = tensor[2]
+        score = self.conv1(x5)
         
         deconv = self.deconv1(score)
-        x = tensor_dict['pool4']
-        score = self.conv2(x)
+        x4 = tensor[1]
+        score = self.conv2(x4)
         
-        score = torch.add(deconv, score)
+        # score = torch.add(deconv, score)
+        score = score + deconv
         
         deconv = self.deconv2(score)
-        x = tensor_dict['pool3']
-        score = self.conv3(x)
+        x3 = tensor[0]
+        score = self.conv3(x3)
         
-        score = torch.add(deconv, score)
+        # score = torch.add(deconv, score)
+        score = score + deconv
         
         deconv = self.deconv3(score)
         score = self.conv4(deconv)

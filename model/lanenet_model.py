@@ -5,80 +5,68 @@ import torch.nn.functional as F
 import torchvision
 from torchvision import datasets, models, transforms
 
-from model import vgg_encoder
-from model import fcn_decoder
+
+if __name__ == '__main__':
+    import vgg_encoder
+    import fcn_decoder
+else:
+    from model import vgg_encoder
+    from model import fcn_decoder
 
 
-class LaneNet:
+class LaneNet(nn.Module):
 
-    def __init__(self):
+    def __init__(self, use_cuda=True):
+        super(LaneNet, self).__init__()
         self.encoder = vgg_encoder.VGGEncoder()
         self.decoder = fcn_decoder.FCNDecoder()
         self.conv1 = nn.Conv2d(64, 3, kernel_size=1, bias=False)  # pixembedding
-
-        normalize = transforms.Normalize(
-            mean=[0.485, 0.456, 0.406],
-            std=[0.229, 0.224, 0.225])
-        self.preprocess = transforms.Compose([
-            transforms.ToTensor(),
-            normalize])
+        self.entropy = nn.CrossEntropyLoss()
+        self.use_cuda = use_cuda
+    
+    def forward(self, src):
+        # encode
+        ret = self.encoder(src)
+        # decode
+        decode_logits, decode_deconv  = self.decoder(ret)
+        pix_embedding = F.relu(self.conv1(decode_deconv))
+        return (decode_logits, pix_embedding)
 
     def inference(self, src):
-        decode_logits, decode_deconv  = self.run_model(src)
+        decode_logits, pix_embedding  = self.forward(src)
         
         binary_seg_ret = F.softmax(decode_logits)
         binary_seg_ret = np.argmax(binary_seg_ret, dim=1)
         
-        pix_embedding = F.relu(self.conv1(decode_deconv))
-        return (binary_seg_ret, pix_embedding)
+        return (binary_seg_ret, pix_embedding) 
     
-    def run_model(self, src):
-        src_tensor = self.preprocess(src)
-
-        # have to check if batch or not
-        if len(src_tensor) != 4:
-            src_tensor = src_tensor.unsqueeze(0)
-        
-        # encode
-        ret = self.encoder(src_tensor)
-        # decode
-        decode_logits, decode_deconv  = self.decoder(ret)
-        return (decode_logits, decode_deconv)
-
     def compute_loss(self, src, binary, instance):
-
-        decode_logits, decode_deconv  = self.run_model(src)
+        decode_logits, pix_embedding = self.forward(src)
 
         # step 1:
         # calculate loss between binary and decode logits
         #
         # use softmax_cross_entropy
-        binary_segmenatation_loss = torch.sum(- binary * F.log_softmax(decode_logits, -1), -1)
-        binary_segmenatation_loss = binary_segmenatation_loss.mean()
+        decode_logits_reshape = decode_logits.view([decode_logits.shape[0], 
+                                                    decode_logits.shape[1], 
+                                                    decode_logits.shape[2] * decode_logits.shape[3]])
+        binary_reshape = binary.view(binary.shape[0],
+                                     binary.shape[1]*binary.shape[2])
+        binary_reshape = torch.div(binary_reshape, 255)
+        binary_reshape = binary_reshape.long()
+
+        binary_segmentation_loss = self.entropy(decode_logits_reshape, binary_reshape)
 
         # step 2:
-        # calculate discrimitive loss between deconv and instance
-        # change deconv into pix_embedding
-
-        # then calculate discrimitive loss
-        pix_embedding = F.relu(self.conv1(decode_deconv))
+        # calculate discriminative loss between deconv and instance
         disc_loss, l_var, l_dist, l_reg = \
-                lanenet_discriminative_loss.discriminative_loss(
-                    pix_embedding, instance, 3, 0.5, 1.5, 1.0, 1.0, 0.001)
+                self.discriminative_loss(pix_embedding, instance, 0.5, 1.5, 1.0, 1.0, 0.001)
         
         total_loss = 0.7*binary_segmentation_loss + 0.3*disc_loss
         
-        ret = {
-            'total_loss': total_loss,
-            'binary_seg_logits': decode_logits,
-            'instance_seg_logits': pix_embedding,
-            'binary_seg_loss': binary_segmenatation_loss,
-            'discriminative_loss': disc_loss
-        }
+        return total_loss, binary_segmentation_loss, pix_embedding, disc_loss
         
-        return ret
-        
-    def discrimitive_loss(self, prediction, correct_label, feature_dim,
+    def discriminative_loss(self, prediction, correct_label,
                         delta_v, delta_d, param_var, param_dist, param_reg):
         
         # saving list (maybe implement dynamic tensor?)
@@ -92,13 +80,13 @@ class LaneNet:
         while i < prediction.shape[0]:
             # calculate discrimitive loss for single image
             single_prediction = prediction[i]
-            single_label = correct_lable[i]
+            single_label = correct_label[i]
             # pdb.set_trace()
-            disc_loss, l_var, l_dist, l_reg = single_discrimitive_loss(
-                single_prediction, single_label, feature_dim, delta_v, delta_d, param_var, param_dist, param_reg)
+            disc_loss, l_var, l_dist, l_reg = self.discriminative_loss_single(
+                single_prediction, single_label, delta_v, delta_d, param_var, param_dist, param_reg)
             
             output_ta_loss.append(disc_loss.unsqueeze(0))
-            output_ta_va.append(l_var.unsqueeze(0))
+            output_ta_var.append(l_var.unsqueeze(0))
             output_ta_dist.append(l_dist.unsqueeze(0))
             output_ta_reg.append(l_reg.unsqueeze(0))
             
@@ -112,59 +100,69 @@ class LaneNet:
         # calculate mean of the batch
         disc_loss = out_loss_op.mean()
         l_var = out_var_op.mean()
-        l_dist = out_vdist_op.mean()
+        l_dist = out_dist_op.mean()
         l_reg = out_reg_op.mean()
 
         return disc_loss, l_var, l_dist, l_reg
         
     def discriminative_loss_single(
+            self,
             prediction,
             correct_label,
-            feature_dim,
             delta_v,
             delta_d,
             param_var,
             param_dist,
             param_reg):
-        """
+        '''
         The example partition loss function mentioned in the paper equ(1)
         :param prediction: inference of network
         :param correct_label: instance label
-        :param feature_dim: feature dimension of prediction
         :param delta_v: cutoff variance distance
         :param delta_d: curoff cluster distance
         :param param_var: weight for intra cluster variance
         :param param_dist: weight for inter cluster distances
         :param param_reg: weight regularization
-        """
-
+        '''
+        
+        feature_dim = prediction.shape[0]
         # Make it a single line
         correct_label = correct_label.view([correct_label.shape[0] * correct_label.shape[1]]).float()
-        reshaped_pred = prediction.view([feature_dim, prediction[0] * prediction[1]]).float()
+        reshaped_pred = prediction.view([feature_dim, prediction.shape[1] * prediction.shape[2]]).float()
         
         # Get unique labels
         unique_labels, unique_id = torch.unique(correct_label, sorted=True, return_inverse=True)
         ids, counts = np.unique(unique_id, return_counts=True)
         num_instances = len(counts)
         counts = torch.tensor(counts, dtype=torch.float32)
+        if self.use_cuda:
+            counts = counts.cuda()
         
         # Calculate the pixel embedding mean vector
-        segmented_sum = torch.zeros(feature_dim, num_instances).scatter_add(1, unique_id.repeat([feature_dim,1]), reshaped_pred)
+        if self.use_cuda:
+            segmented_sum = torch.zeros(feature_dim, num_instances).cuda().scatter_add(1, unique_id.repeat([feature_dim,1]), reshaped_pred)
+        else:
+            segmented_sum = torch.zeros(feature_dim, num_instances).scatter_add(1, unique_id.repeat([feature_dim,1]), reshaped_pred)
+        
         mu = torch.div(segmented_sum, counts)
         mu_expand = torch.gather(mu, 1, unique_id.repeat([feature_dim,1]))
 
         # Calculate loss(var)
         distance = (mu_expand - reshaped_pred).t().norm(dim=1)
-        distance -= torch.tensor(delta_v, dtype=torch.float32)
-        distance = torch.clamp(distance, min=0.)   # min is 0.
-        distance = distance.pow(2)
+        distance_1 = distance - delta_v
+        distance_2 = torch.clamp(distance_1, min=0.)   # min is 0.
+        distance_3 = distance_2.pow(2)
         
-        l_var = torch.zeros(num_instances).scatter_add(0, unique_id, distance)
+        if self.use_cuda:
+            l_var = torch.zeros(num_instances).cuda().scatter_add(0, unique_id, distance_3)
+        else:
+            l_var = torch.zeros(num_instances).scatter_add(0, unique_id, distance_3)
         l_var = torch.div(l_var, counts)
         l_var = l_var.sum()
         l_var = torch.div(l_var, num_instances)  # single value 
    
         # Calculate the loss(dist) of the formula
+        mu_diff = []
         for i in range(feature_dim):
             for j in range(feature_dim):
                 if i != j:
@@ -174,11 +172,11 @@ class LaneNet:
         mu_diff = torch.cat(mu_diff)
         
         mu_norm = mu_diff.norm(dim=1)
-        mu_norm = (2. * delta_d - mu_norm)
-        mu_norm = torch.clamp(mu_norm, min=0.)
-        mu_norm = mu_norm.pow(2)
+        mu_norm_1 = (2. * delta_d - mu_norm)
+        mu_norm_2 = torch.clamp(mu_norm_1, min=0.)
+        mu_norm_3 = mu_norm_2.pow(2)
         
-        l_dist = mu_norm.mean()
+        l_dist = mu_norm_3.mean()
         
         # Calculate the regular term loss mentioned in the original Discriminative Loss paper
         l_reg = mu.norm(dim=1).mean()
@@ -193,7 +191,27 @@ class LaneNet:
 
         return loss, l_var, l_dist, l_reg
 
-
-if __name__ == '__main__':
     
-    pass
+if __name__ == '__main__':
+    import os
+    import sys
+    sys.path.insert(0,'.')
+    from config import global_config
+    from dataset import LaneNetDataset
+    from utils import preprocess_rgb
+
+    TRAIN_FILE = '/home/ubuntu/dev/LaneNet-Pytorch/data/training_data/train.txt'
+    CFG = global_config.cfg
+    
+    dataset = LaneNetDataset(TRAIN_FILE, CFG)
+    inputs = next(iter(dataset))  # (src, binary, instance)
+    
+    lane_net = LaneNet().cuda()
+    
+    src = preprocess_rgb(inputs[0])
+    print(src)
+    binary = torch.tensor(inputs[1]).unsqueeze(0).cuda()
+    inference = torch.tensor(inputs[2]).unsqueeze(0).cuda()
+    
+    total_loss, binary_segmentation_loss, pix_embedding, disc_loss = lane_net.compute_loss(src, binary, inference)
+    print(total_loss)

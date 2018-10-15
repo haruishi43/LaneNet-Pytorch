@@ -10,7 +10,7 @@ cfg = __C
 __C.TRAIN = edict()
 
 # set the shadownet training epochs
-__C.TRAIN.EPOCHS = 200010
+__C.TRAIN.EPOCHS = 1000 #200010
 # set the display step
 __C.TRAIN.DISPLAY_STEP = 1
 # Set the test display step during training process

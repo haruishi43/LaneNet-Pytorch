@@ -12,4 +12,7 @@
 - Decoder
     - Use conv and deconv layers
     - Output should be pixel embeddings and binary segmentation
+- LaneNet
+    - Create a prototype for LaneNet model
+    
     

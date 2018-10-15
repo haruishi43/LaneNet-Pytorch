@@ -1,9 +1,10 @@
 import cv2
 from torch.utils.data.dataset import Dataset
+from torchvision import datasets, models, transforms
 
 
 class LaneNetDataset(Dataset):
-    def __init__(self, text_file, cfg):
+    def __init__(self, text_file, cfg, transform=None):
         # Set image size
         self.height, self.width = cfg.TRAIN.IMG_HEIGHT, cfg.TRAIN.IMG_WIDTH
         
@@ -14,6 +15,8 @@ class LaneNetDataset(Dataset):
             for line in f:
                 d = [a for a in line.rstrip('\n').split(' ')]
                 self.data_locations.append(d)
+                
+        self.transform = transform
 
     def __getitem__(self, index):
         '''Return 3 images (src, binary, instance)'''
@@ -26,6 +29,9 @@ class LaneNetDataset(Dataset):
         source_img = self._resize(source_img, interp=cv2.INTER_LINEAR)
         binary_img = self._resize(binary_img)
         instance_img = self._resize(instance_img)
+        
+        if self.transform:
+            source_img = self.transform(source_img)
         
         return (source_img, binary_img, instance_img)
 

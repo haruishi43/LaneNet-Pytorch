@@ -35,10 +35,11 @@ class FCNDecoder(nn.Module):
         
         score = torch.add(deconv, score)
         
-        deconv_final = self.deconv3(score)
-        score_final = self.conv4(deconv_final)
+        deconv = self.deconv3(score)
+        score = self.conv4(deconv)
         
-        return (score_final, deconv_final)
+        return (score, deconv)
+
 
 if __name__ == '__main__':
     import os

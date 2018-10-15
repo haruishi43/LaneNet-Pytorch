@@ -13,7 +13,7 @@ class VGGEncoder(nn.Module):
         vgg.classifier = nn.Sequential(*features)
         self.features = vgg.features
         
-        # freeze all layers
+        # freeze all layers since vgg is used for feature extraction
         for param in self.features.parameters():
             param.require_grad = False
             

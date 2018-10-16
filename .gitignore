@@ -1,4 +1,7 @@
 data/training_data
+model/checkpoints
+notebook/torching.ipynb
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -9,9 +9,52 @@ Referenced [TensorFlow implementation of LaneNet](https://github.com/MaybeShewil
 
 Dataset is publicly available at [this repo](https://github.com/TuSimple/tusimple-benchmark/tree/master/doc/lane_detection) by TuSimple.
 
-## Why this paper?
+## Requirements:
 
-Even though it placed
+- Python3
+- [PyTorch](https://pytorch.org/)
+- OpenCV
+
+To install all dependencies:
+
+```
+pip install -r requirements.txt
+```
+
+## Usage:
+
+### Creating the dataset:
+
+- Since the tuSimple dataset does not provide binary and instance images, I provided `data_creater.py` script to create the needed dataset.
+- Make sure to download the tuSimple dataset from the aforementioned link.
+
+```
+# create directories
+mkdir data/training_data
+mkdir data/training_data/gt_image_instance
+mkdir data/training_data/gt_image_binary
+
+python data_creater.py --dataset-path /path/to/tuSimple/dataset
+```
+
+### Training:
+
+All configurations and hyperparameters for training is in `config/global_config.py`.
+
+```
+python train.py  --dataset-file /path/to/dataset/train.txt
+```
+
+### Testing:
+
+WIP
 
 
 
+## TODO:
+
+- [ ] Debug
+- [ ] CPU-only
+- [ ] Visualization
+- [ ] TensorboardX
+- [ ] 

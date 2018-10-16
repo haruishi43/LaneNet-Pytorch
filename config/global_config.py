@@ -21,8 +21,6 @@ __C.TRAIN.MOMENTUM = 0.9
 __C.TRAIN.LEARNING_RATE = 0.0005
 # Set the GPU resource used during training process
 __C.TRAIN.GPU_MEMORY_FRACTION = 0.85
-# Set the GPU allow growth parameter during tensorflow training process
-__C.TRAIN.TF_ALLOW_GROWTH = True
 # Set the shadownet training batch size
 __C.TRAIN.BATCH_SIZE = 4
 
@@ -44,7 +42,5 @@ __C.TEST = edict()
 
 # Set the GPU resource used during testing process
 __C.TEST.GPU_MEMORY_FRACTION = 0.8
-# Set the GPU allow growth parameter during tensorflow testing process
-__C.TEST.TF_ALLOW_GROWTH = True
 # Set the test batch size
 __C.TEST.BATCH_SIZE = 32

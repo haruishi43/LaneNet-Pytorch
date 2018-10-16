@@ -1,5 +1,5 @@
 data/training_data
-model/checkpoints
+model/saved_model
 notebook/torching.ipynb
 
 

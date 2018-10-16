@@ -63,7 +63,7 @@ class LaneNet(nn.Module):
         
         total_loss = 0.7*binary_segmentation_loss + 0.3*disc_loss
         
-        return total_loss, binary_segmentation_loss, pix_embedding, disc_loss
+        return total_loss, binary_segmentation_loss, disc_loss, decode_logits, pix_embedding
         
     def discriminative_loss(self, prediction, correct_label,
                         delta_v, delta_d, param_var, param_dist, param_reg):

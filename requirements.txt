@@ -1,0 +1,8 @@
+
+easydict
+numpy
+matplotlib
+torch
+torchvision
+tensorboardX
+opencv-python

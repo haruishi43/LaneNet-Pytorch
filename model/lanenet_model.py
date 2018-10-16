@@ -5,7 +5,6 @@ import torch.nn.functional as F
 import torchvision
 from torchvision import datasets, models, transforms
 
-
 if __name__ == '__main__':
     import vgg_encoder
     import fcn_decoder
@@ -149,12 +148,12 @@ class LaneNet(nn.Module):
 
         # Calculate loss(var)
         distance = (mu_expand - reshaped_pred).t().norm(dim=1)
-        distance_1 = distance - delta_v
-        distance_2 = torch.clamp(distance_1, min=0.)   # min is 0.
-        distance_3 = distance_2.pow(2)
+        distance = distance - delta_v
+        distance = torch.clamp(distance, min=0.)   # min is 0.
+        distance = distance.pow(2)
         
         if self.use_cuda:
-            l_var = torch.zeros(num_instances).cuda().scatter_add(0, unique_id, distance_3)
+            l_var = torch.zeros(num_instances).cuda().scatter_add(0, unique_id, distance)
         else:
             l_var = torch.zeros(num_instances).scatter_add(0, unique_id, distance_3)
         l_var = torch.div(l_var, counts)
@@ -172,11 +171,11 @@ class LaneNet(nn.Module):
         mu_diff = torch.cat(mu_diff)
         
         mu_norm = mu_diff.norm(dim=1)
-        mu_norm_1 = (2. * delta_d - mu_norm)
-        mu_norm_2 = torch.clamp(mu_norm_1, min=0.)
-        mu_norm_3 = mu_norm_2.pow(2)
+        mu_norm = (2. * delta_d - mu_norm)
+        mu_norm = torch.clamp(mu_norm, min=0.)
+        mu_norm = mu_norm.pow(2)
         
-        l_dist = mu_norm_3.mean()
+        l_dist = mu_norm.mean()
         
         # Calculate the regular term loss mentioned in the original Discriminative Loss paper
         l_reg = mu.norm(dim=1).mean()

@@ -41,9 +41,17 @@ python data_creater.py --dataset-path /path/to/tuSimple/dataset
 
 All configurations and hyperparameters for training is in `config/global_config.py`.
 
+Create a directory to save the model:
+
+```
+mkdir data/saved_model
+```
+
 ```
 python train.py  --dataset-file /path/to/dataset/train.txt
 ```
+
+
 
 ### Testing:
 

@@ -35,7 +35,7 @@ class LaneNet(nn.Module):
         decode_logits, pix_embedding  = self.forward(src)
         
         binary_seg_ret = F.softmax(decode_logits)
-        binary_seg_ret = np.argmax(binary_seg_ret, dim=1)
+        binary_seg_ret = binary_seg_ret.argmax(1)
         
         return (binary_seg_ret, pix_embedding) 
     
@@ -74,7 +74,7 @@ class LaneNet(nn.Module):
         output_ta_dist = []
         output_ta_reg = []
         
-        # for each batch calculate the loss
+        # for each image calculate the loss
         i = 0
         while i < prediction.shape[0]:
             # calculate discrimitive loss for single image
@@ -155,7 +155,7 @@ class LaneNet(nn.Module):
         if self.use_cuda:
             l_var = torch.zeros(num_instances).cuda().scatter_add(0, unique_id, distance)
         else:
-            l_var = torch.zeros(num_instances).scatter_add(0, unique_id, distance_3)
+            l_var = torch.zeros(num_instances).scatter_add(0, unique_id, distance)
         l_var = torch.div(l_var, counts)
         l_var = l_var.sum()
         l_var = torch.div(l_var, num_instances)  # single value 
@@ -212,5 +212,5 @@ if __name__ == '__main__':
     binary = torch.tensor(inputs[1]).unsqueeze(0).cuda()
     inference = torch.tensor(inputs[2]).unsqueeze(0).cuda()
     
-    total_loss, binary_segmentation_loss, pix_embedding, disc_loss = lane_net.compute_loss(src, binary, inference)
+    total_loss, _, _, _, _ = lane_net.compute_loss(src, binary, inference)
     print(total_loss)

@@ -19,7 +19,7 @@ class FCNDecoder(nn.Module):
         self.train()
         
     def forward(self, tensor):
-        
+        assert len(tensor) == 3, 'size mismatch'
         x5 = tensor[2]
         score = self.conv1(x5)
         

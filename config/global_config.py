@@ -22,7 +22,7 @@ __C.TRAIN.LEARNING_RATE = 0.0005
 # Set the GPU resource used during training process
 __C.TRAIN.GPU_MEMORY_FRACTION = 0.85
 # Set the shadownet training batch size
-__C.TRAIN.BATCH_SIZE = 4
+__C.TRAIN.BATCH_SIZE = 8
 
 # Set the shadownet validation batch size
 __C.TRAIN.VAL_BATCH_SIZE = 4

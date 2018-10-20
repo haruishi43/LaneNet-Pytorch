@@ -62,7 +62,8 @@ WIP
 ## TODO:
 
 - [ ] Debug
+- [ ] Remove CV2 dependencies for PyTorch Dataset
 - [ ] CPU-only
 - [ ] Visualization
-- [ ] TensorboardX
+- [ ] Visdom
 - [ ] 

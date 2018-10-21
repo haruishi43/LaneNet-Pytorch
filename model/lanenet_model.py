@@ -34,7 +34,7 @@ class LaneNet(nn.Module):
     def inference(self, src):
         decode_logits, pix_embedding  = self.forward(src)
         
-        binary_seg_ret = F.softmax(decode_logits)
+        binary_seg_ret = F.softmax(decode_logits, dim=0)
         binary_seg_ret = binary_seg_ret.argmax(1)
         
         return (binary_seg_ret, pix_embedding) 
@@ -148,11 +148,11 @@ class LaneNet(nn.Module):
             segmented_sum = torch.zeros(feature_dim, num_instances).scatter_add(1, unique_id.repeat([feature_dim,1]), reshaped_pred)
         mu = torch.div(segmented_sum, counts)
         mu_expand = torch.gather(mu, 1, unique_id.repeat([feature_dim,1]))
-
-        # Calculate loss(var)
+        
+        # Calculate Variance Term
         
         distance = (mu_expand - reshaped_pred).t().norm(dim=1)  
-        distance = 255. * distance - delta_v  # delta_v too big!!!
+        distance = distance - delta_v  # delta_v too big!!!
         distance = torch.clamp(distance, min=0.)   # min is 0.
         distance = distance.pow(2)
         
@@ -167,7 +167,8 @@ class LaneNet(nn.Module):
             num_instances_tensor = num_instances_tensor.cuda()
         l_var = torch.div(l_var, num_instances_tensor)  # single value 
         
-        # Calculate the loss(dist) of the formula
+        # Calculate Distance Term
+        
         mu_t = mu.t()
         mu_diff = []
         for i in range(num_instances):
@@ -178,7 +179,7 @@ class LaneNet(nn.Module):
                     
         mu_diff = torch.cat(mu_diff)
         mu_norm = mu_diff.norm(dim=1)
-        mu_norm = delta_d - 255. * mu_norm  # delta_d too big
+        mu_norm = delta_d - mu_norm  # delta_d too big
         mu_norm = torch.clamp(mu_norm, min=0.)
         mu_norm = mu_norm.pow(2)
         

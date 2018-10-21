@@ -54,7 +54,7 @@ def calculate_binary_accuracy(logits, label):
     out = binary_prob.argmax(1)  # which class scored the highest?
 
     # Get indices where label
-    lane_indices = (binary == 0).nonzero()  # white pixels are 1
+    lane_indices = (binary == 1).nonzero()  # white pixels are 1
     
     # To numpy for cpu calculation
     out = out.cpu().numpy()
@@ -82,7 +82,6 @@ if __name__ == '__main__':
     
     
     # Training
-    writer = SummaryWriter(args.log_path)
     
     
     total_step = len(train_loader)
@@ -114,7 +113,6 @@ if __name__ == '__main__':
                 print ('Epoch [{}/{}], Step [{}/{}], Total Loss: {:.4f}, Binary Loss: {:.4f}, Disc Loss: {:.4f}' 
                    .format(epoch+1, CFG.TRAIN.EPOCHS, i+1, total_step, total_loss, binary_seg_loss, disc_loss))
                 niter = epoch*total_step+(i+1)
-                writer.add_scalar('Train/Loss', total_loss, niter)
         
         # Validation Data
         model.eval()
@@ -144,7 +142,4 @@ if __name__ == '__main__':
                     'scheduler': scheduler.state_dict(),
                     }, '{}/lanenet_{}.pth'.format(args.save_path, epoch))
 
-    
-    writer.export_scalars_to_json(f'{args.log_path}/all_scalars.json')
-    writer.close()
     print('finished')

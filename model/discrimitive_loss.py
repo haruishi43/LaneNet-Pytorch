@@ -1,5 +1,10 @@
-from torch.nn.modules.loss import _assert_no_grad, _Loss
-from torch.autograd import Variable
+"""
+This is the implementation of following paper:
+https://arxiv.org/pdf/1802.05591.pdf
+This implementation is based on following code:
+https://github.com/Wizaron/instance-segmentation-pytorch
+"""
+from torch.nn.modules.loss import _Loss
 import torch
 
 
@@ -7,19 +12,19 @@ class DiscriminativeLoss(_Loss):
 
     def __init__(self, delta_var=0.5, delta_dist=1.5,
                  norm=2, alpha=1.0, beta=1.0, gamma=0.001,
-                 usegpu=True, size_average=True):
-        super(DiscriminativeLoss, self).__init__(size_average)
+                 device='cpu'):
+        super(DiscriminativeLoss, self).__init__(reduction='mean')
         self.delta_var = delta_var
         self.delta_dist = delta_dist
         self.norm = norm
         self.alpha = alpha
         self.beta = beta
         self.gamma = gamma
-        self.usegpu = usegpu
+        self.device = torch.device(device) 
         assert self.norm in [1, 2]
 
     def forward(self, input, target, n_clusters):
-        _assert_no_grad(target)
+        target.requires_grad = False
         return self._discriminative_loss(input, target, n_clusters)
 
     def _discriminative_loss(self, input, target, n_clusters):
@@ -63,9 +68,8 @@ class DiscriminativeLoss(_Loss):
             assert n_pad_clusters >= 0
             if n_pad_clusters > 0:
                 pad_sample = torch.zeros(n_features, n_pad_clusters)
-                pad_sample = Variable(pad_sample)
-                if self.usegpu:
-                    pad_sample = pad_sample.cuda()
+                pad_sample.requires_grad_(requires_grad=True)
+                pad_sample = pad_sample.to(self.device)
                 mean_sample = torch.cat((mean_sample, pad_sample), dim=1)
             means.append(mean_sample)
 
@@ -117,9 +121,8 @@ class DiscriminativeLoss(_Loss):
             diff = means_a - means_b
 
             margin = 2 * self.delta_dist * (1.0 - torch.eye(n_clusters[i]))
-            margin = Variable(margin)
-            if self.usegpu:
-                margin = margin.cuda()
+            margin.requires_grad_(requires_grad=True)
+            margin = margin.to(self.device)
             c_dist = torch.sum(torch.clamp(margin - torch.norm(diff, self.norm, 0), min=0) ** 2)
             dist_term += c_dist / (2 * n_clusters[i] * (n_clusters[i] - 1))
         dist_term /= bs
@@ -137,3 +140,8 @@ class DiscriminativeLoss(_Loss):
         reg_term /= bs
 
         return reg_term
+
+    
+if __name__ == '__name__':
+    
+    pass

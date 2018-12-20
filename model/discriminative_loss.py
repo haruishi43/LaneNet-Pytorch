@@ -23,13 +23,31 @@ class DiscriminativeLoss(_Loss):
         self.device = torch.device(device) 
         assert self.norm in [1, 2]
 
-    def forward(self, input, target, n_clusters):
+    def forward(self, input, target):
         target.requires_grad = False
+        
+        # count instances
+        n_clusters = self._count_unique(target)
+        # n_cluster list of cluster
         return self._discriminative_loss(input, target, n_clusters)
+
+    def _count_unique(self, targets):
+        n_clusters = []
+        
+        # for each batch:
+        for i in range(0, len(targets)):
+            target = targets[i]
+            target = target.view([target.shape[0] * target.shape[1]]).float()
+            unique_labels, _ = torch.unique(target, sorted=True, return_inverse=True)
+            n_clusters.append(len(unique_labels))
+            
+        return n_clusters
 
     def _discriminative_loss(self, input, target, n_clusters):
         bs, n_features, height, width = input.size()
+        print(target.size())
         max_n_clusters = target.size(1)
+        print(max_n_clusters)
 
         input = input.contiguous().view(bs, n_features, height * width)
         target = target.contiguous().view(bs, max_n_clusters, height * width)

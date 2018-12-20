@@ -27,7 +27,7 @@ def init_args():
     parser.add_argument('--binary-path', type=str, default='gt_image_binary/', help='Directory name of binary images (relative to training)')
 
     # Arguments for dataset source
-    parser.add_argument('--dataset-path', type=str, default='/home/ubuntu/mydata/tusimple/train_set/', help='root dir of the dataset that contains video clips and json for label')
+    parser.add_argument('--dataset-path', type=str, default='/home/ubuntu/haruya_dataset/tuSimple/train_set/', help='root dir of the dataset that contains video clips and json for label')
 
     return parser.parse_args()
 

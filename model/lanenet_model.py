@@ -9,20 +9,22 @@ from torchvision import datasets, models, transforms
 if __name__ == '__main__':
     import vgg_encoder
     import fcn_decoder
+    import discriminative_loss
 else:
     from model import vgg_encoder
     from model import fcn_decoder
+    from model import discriminative_loss
 
 
 class LaneNet(nn.Module):
 
-    def __init__(self, use_cuda=True):
+    def __init__(self, device='cpu'):
         super(LaneNet, self).__init__()
         self.encoder = vgg_encoder.VGGEncoder()
         self.decoder = fcn_decoder.FCNDecoder()
         self.conv1 = nn.Conv2d(64, 3, kernel_size=1, bias=False)  # pixembedding
         self.entropy = nn.CrossEntropyLoss()
-        self.use_cuda = use_cuda
+        self.discriminative_loss = discriminative_loss.DiscriminativeLoss(device=device)
     
     def forward(self, src):
         # encode
@@ -64,141 +66,12 @@ class LaneNet(nn.Module):
         # step 2:
         # calculate discriminative loss between deconv and instance
         disc_loss, l_var, l_dist, l_reg = \
-                self.discriminative_loss(pix_embedding, instance, 0.5, 3.0, 1.0, 1.0, 0.001)
+                self.discriminative_loss(pix_embedding, instance)
         
         total_loss = 0.7*binary_segmentation_loss + 0.3*disc_loss
         
         return total_loss, binary_segmentation_loss, disc_loss, decode_logits, pix_embedding
         
-    def discriminative_loss(self, prediction, correct_label,
-                        delta_v, delta_d, param_var, param_dist, param_reg):
-        
-        # saving list (maybe implement dynamic tensor?)
-        output_ta_loss = []
-        output_ta_var = []
-        output_ta_dist = []
-        output_ta_reg = []
-        
-        # for each image calculate the loss
-        i = 0
-        while i < prediction.shape[0]:
-            # calculate discrimitive loss for single image
-            single_prediction = prediction[i]
-            single_label = correct_label[i]
-            # pdb.set_trace()
-            disc_loss, l_var, l_dist, l_reg = self.discriminative_loss_single(
-                single_prediction, single_label, delta_v, delta_d, param_var, param_dist, param_reg)
-            
-            output_ta_loss.append(disc_loss.unsqueeze(0))
-            output_ta_var.append(l_var.unsqueeze(0))
-            output_ta_dist.append(l_dist.unsqueeze(0))
-            output_ta_reg.append(l_reg.unsqueeze(0))
-            
-            i += 1  # next image in batch
-        
-        out_loss_op = torch.cat(output_ta_loss)
-        out_var_op = torch.cat(output_ta_var)
-        out_dist_op = torch.cat(output_ta_dist)
-        out_reg_op = torch.cat(output_ta_reg)
-        
-        # calculate mean of the batch
-        disc_loss = out_loss_op.mean()
-        l_var = out_var_op.mean()
-        l_dist = out_dist_op.mean()
-        l_reg = out_reg_op.mean()
-
-        return disc_loss, l_var, l_dist, l_reg
-        
-    def discriminative_loss_single(
-            self,
-            prediction,
-            correct_label,
-            delta_v,
-            delta_d,
-            param_var,
-            param_dist,
-            param_reg):
-        '''
-        The example partition loss function mentioned in the paper equ(1)
-        :param prediction: inference of network
-        :param correct_label: instance label
-        :param delta_v: cutoff variance distance
-        :param delta_d: curoff cluster distance
-        :param param_var: weight for intra cluster variance
-        :param param_dist: weight for inter cluster distances
-        :param param_reg: weight regularization
-        '''
-        
-        feature_dim = prediction.shape[0]
-        # Make it a single line
-        correct_label = correct_label.view([correct_label.shape[0] * correct_label.shape[1]]).float()
-        reshaped_pred = prediction.view([feature_dim, prediction.shape[1] * prediction.shape[2]]).float()
-        
-        # Get unique labels
-        unique_labels, unique_id = torch.unique(correct_label, sorted=True, return_inverse=True)
-        _, counts = np.unique(unique_id, return_counts=True)
-        num_instances = len(unique_labels)
-        counts = torch.tensor(counts, dtype=torch.float32)
-        if self.use_cuda:
-            counts = counts.cuda()
-
-        # Calculate the pixel embedding mean vector
-        if self.use_cuda:
-            segmented_sum = torch.zeros(feature_dim, num_instances).cuda().scatter_add(1, unique_id.repeat([feature_dim,1]), reshaped_pred)
-        else:
-            segmented_sum = torch.zeros(feature_dim, num_instances).scatter_add(1, unique_id.repeat([feature_dim,1]), reshaped_pred)
-        mu = torch.div(segmented_sum, counts)
-        mu_expand = torch.gather(mu, 1, unique_id.repeat([feature_dim,1]))
-        
-        # Calculate Variance Term
-        
-        distance = (mu_expand - reshaped_pred).t().norm(dim=1)  
-        distance = distance - delta_v  # delta_v too big!!!
-        distance = torch.clamp(distance, min=0.)   # min is 0.
-        distance = distance.pow(2)
-        
-        if self.use_cuda:
-            l_var = torch.zeros(num_instances).cuda().scatter_add(0, unique_id, distance)
-        else:
-            l_var = torch.zeros(num_instances).scatter_add(0, unique_id, distance)    
-        l_var = torch.div(l_var, counts)
-        l_var = l_var.sum()
-        num_instances_tensor = torch.tensor(num_instances, dtype=torch.float32)
-        if self.use_cuda:
-            num_instances_tensor = num_instances_tensor.cuda()
-        l_var = torch.div(l_var, num_instances_tensor)  # single value 
-        
-        # Calculate Distance Term
-        
-        mu_t = mu.t()
-        mu_diff = []
-        for i in range(num_instances):
-            for j in range(num_instances):
-                if i != j:
-                    diff = mu_t[i] - mu_t[j]
-                    mu_diff.append(diff.unsqueeze(0))
-                    
-        mu_diff = torch.cat(mu_diff)
-        mu_norm = mu_diff.norm(dim=1)
-        mu_norm = delta_d - mu_norm  # delta_d too big
-        mu_norm = torch.clamp(mu_norm, min=0.)
-        mu_norm = mu_norm.pow(2)
-        
-        l_dist = mu_norm.mean()
-        
-        # Calculate the regular term loss mentioned in the original Discriminative Loss paper
-        l_reg = mu.norm(dim=1).mean()
-
-        # Consolidation losses are combined according to the parameters mentioned in the original Discriminative Loss paper
-        param_scale = 1.
-        l_var = param_var * l_var
-        l_dist = param_dist * l_dist
-        l_reg = param_reg * l_reg
-
-        loss = param_scale * (l_var + l_dist + l_reg)
-
-        return loss, l_var, l_dist, l_reg
-
     
 if __name__ == '__main__':
     import os

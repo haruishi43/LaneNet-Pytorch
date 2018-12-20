@@ -65,7 +65,7 @@ def train(args):
     train_loader, val_loader = create_dataloader(args)
     
     # model, optimizers
-    model = lanenet_model.LaneNet().to(args.main_device)
+    model = lanenet_model.LaneNet(device=args.main_device).to(args.main_device)
     optimizer = optim.Adam(model.parameters(), lr=CFG.TRAIN.LEARNING_RATE)
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.1)
     

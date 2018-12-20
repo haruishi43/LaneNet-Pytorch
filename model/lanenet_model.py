@@ -5,6 +5,7 @@ import torch.nn.functional as F
 import torchvision
 from torchvision import datasets, models, transforms
 
+
 if __name__ == '__main__':
     import vgg_encoder
     import fcn_decoder

@@ -15,8 +15,7 @@ from model.lanenet_model import LaneNet
 training_file = '/home/ubuntu/dev/LaneNet-Pytorch/data/training_data/train.txt'
 CFG = global_config.cfg
 
-if __name__ == '__main__':
-    
+def test(args):
     import torchvision.transforms.functional as VF
     
     dataset = LaneNetDataset(training_file, CFG, True)
@@ -39,4 +38,7 @@ if __name__ == '__main__':
     binary_seg = binary_seg_ret.cpu()
     binary = VF.to_pil_image(binary_seg.int())
     
-    # save image.
+
+
+if __name__ == '__main__':
+    pass

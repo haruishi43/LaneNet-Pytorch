@@ -1,6 +1,4 @@
 import os
-import argparse
-import os
 import sys
 import torch
 import torch.nn as nn
@@ -11,20 +9,14 @@ import torchvision
 from torchvision import datasets, models, transforms
 
 import pdb
+
+from arguments import init_args
 from config import global_config
 from dataset import LaneNetDataset
 from model import lanenet_model
 CFG = global_config.cfg
 
 
-def init_args():
-    '''Args:'''
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset-file', type=str, default='/home/ubuntu/dev/LaneNet-Pytorch/data/training_data/train.txt', help='Path to text file that has training data information')
-    parser.add_argument('--save-path', type=str, default='./model/saved_model/', help='Where to save the trained model')
-    parser.add_argument('--pretrained-model', type=str, help='pretrained model path')
-    parser.add_argument('--log-path', type=str, default='/home/ubuntu/dev/LaneNet-Pytorch/logs', help='Where to save scalar data from TensorboardX')
-    return parser.parse_args()
 
 
 def create_dataloader(args, split=0.8):
@@ -67,22 +59,17 @@ def calculate_binary_accuracy(logits, label):
     return accuracy
 
 
-if __name__ == '__main__':
-    # initialize args
-    args = init_args()
+def train(args):
     
     # get dataloaders
     train_loader, val_loader = create_dataloader(args)
-
+    
     # model, optimizers
-    model = lanenet_model.LaneNet().cuda()
+    model = lanenet_model.LaneNet().to(args.main_device)
     optimizer = optim.Adam(model.parameters(), lr=CFG.TRAIN.LEARNING_RATE)
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.1)
     
-    
-    
-    # Training
-    
+    #TODO: Load resume path
     
     total_step = len(train_loader)
     inc = int(total_step / 16)
@@ -94,9 +81,9 @@ if __name__ == '__main__':
         for i, (src, binary, instance) in enumerate(train_loader):
 
             # send to gpu
-            src = src.cuda()
-            binary = binary.cuda()
-            instance = instance.cuda()
+            src = src.to(args.main_device)
+            binary = binary.to(args.main_device)
+            instance = instance.to(args.main_device)
 
             # Forward pass
             total_loss, binary_seg_loss, disc_loss, _, _ = model.compute_loss(src, binary, instance)
@@ -116,30 +103,31 @@ if __name__ == '__main__':
         
         # Validation Data
         model.eval()
-        for i, (src, binary, instance) in enumerate(val_loader):
+        with torch.no_grad():
+            for i, (src, binary, instance) in enumerate(val_loader):
 
-            # send to gpu
-            src = src.cuda()
-            binary = binary.cuda()
-            instance = instance.cuda()
+                # send to gpu
+                src = src.to(args.main_device)
+                binary = binary.to(args.main_device)
+                instance = instance.to(args.main_device)
 
-            # Forward pass
-            with torch.no_grad():
+                # Forward pass
+
                 _, _, _, binary_logits, pix_embeddings = model.compute_loss(src, binary, instance)
 
-            # Calculate accuracy
-            if (i+1)%inc == 0:
-                accuracy = calculate_binary_accuracy(binary_logits, binary)
-                print(accuracy)
-            
-            
-        
-        if (epoch+1) % 50 == 0:
-            torch.save({
-                    'epoch': epoch,
-                    'model_state_dict': model.state_dict(),
-                    'optimizer_state_dict': optimizer.state_dict(),
-                    'scheduler': scheduler.state_dict(),
-                    }, '{}/lanenet_{}.pth'.format(args.save_path, epoch))
+                # Calculate accuracy
+                if (i+1)%inc == 0:
+                    accuracy = calculate_binary_accuracy(binary_logits, binary)
+                    print(accuracy)
+
+
+
+            if (epoch+1) % 50 == 0:
+                torch.save({
+                        'epoch': epoch,
+                        'model_state_dict': model.state_dict(),
+                        'optimizer_state_dict': optimizer.state_dict(),
+                        'scheduler': scheduler.state_dict(),
+                        }, '{}/lanenet_{}.pth'.format(args.save_path, epoch))
 
     print('finished')

@@ -11,9 +11,8 @@ Dataset is publicly available at [this repo](https://github.com/TuSimple/tusimpl
 
 ## Requirements:
 
-- Python3
+- Python >= 3.5
 - [PyTorch](https://pytorch.org/)
-- OpenCV
 
 To install all dependencies:
 
@@ -27,7 +26,6 @@ pip install -r requirements.txt
 
 - Since the tuSimple dataset does not provide binary and instance images, I provided `data_creater.py` script to create the needed dataset.
 - Make sure to download the tuSimple dataset from the aforementioned link.
-
 ```
 # create directories
 mkdir data/training_data
@@ -55,15 +53,5 @@ python train.py  --dataset-file /path/to/dataset/train.txt
 
 ### Testing:
 
-WIP
-
-
 
 ## TODO:
-
-- [ ] Debug
-- [ ] Remove CV2 dependencies for PyTorch Dataset
-- [ ] CPU-only
-- [ ] Visualization
-- [ ] Visdom
-- [ ] 

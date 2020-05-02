@@ -1,8 +1,7 @@
-
 easydict
 numpy
 matplotlib
+pillow-simd
 torch
 torchvision
-visdom
 opencv-python

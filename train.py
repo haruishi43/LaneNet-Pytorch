@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import os
 import sys
 import torch
@@ -15,8 +17,6 @@ from config import global_config
 from dataset import LaneNetDataset
 from model import lanenet_model
 CFG = global_config.cfg
-
-
 
 
 def create_dataloader(args, split=0.8):
@@ -119,8 +119,6 @@ def train(args):
                 if (i+1)%inc == 0:
                     accuracy = calculate_binary_accuracy(binary_logits, binary)
                     print(accuracy)
-
-
 
             if (epoch+1) % 50 == 0:
                 torch.save({

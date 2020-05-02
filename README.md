@@ -7,10 +7,25 @@ Referenced [TensorFlow implementation of LaneNet](https://github.com/MaybeShewil
 
 ## Dataset:
 
+### Download TuSimple:
+
 ~~Dataset is publicly available at [this repo](https://github.com/TuSimple/tusimple-benchmark/tree/master/doc/lane_detection) by TuSimple.~~
-Edit: Train, test and GTs are available from [this issue](https://github.com/TuSimple/tusimple-benchmark/issues/3) or run the script below:
+
+__Edit__: Train, test and GTs are available from [this issue](https://github.com/TuSimple/tusimple-benchmark/wiki) or run the script below:
 ```
 ./scripts/download_tusimple.sh
+```
+
+### Preprocessing:
+
+Since the TuSimple dataset does not provide binary and instance images, I provided `data_creater.py` script to create the needed dataset.
+```
+# create directories
+mkdir data/training_data
+mkdir data/training_data/gt_image_instance
+mkdir data/training_data/gt_image_binary
+
+python data_creater.py --dataset-path /path/to/tuSimple/dataset
 ```
 
 ## Requirements:
@@ -26,18 +41,6 @@ pip install -r requirements.txt
 
 ## Usage:
 
-### Creating the dataset:
-
-- Since the tuSimple dataset does not provide binary and instance images, I provided `data_creater.py` script to create the needed dataset.
-- Make sure to download the tuSimple dataset from the aforementioned link.
-```
-# create directories
-mkdir data/training_data
-mkdir data/training_data/gt_image_instance
-mkdir data/training_data/gt_image_binary
-
-python data_creater.py --dataset-path /path/to/tuSimple/dataset
-```
 
 ### Training:
 

@@ -7,7 +7,11 @@ Referenced [TensorFlow implementation of LaneNet](https://github.com/MaybeShewil
 
 ## Dataset:
 
-Dataset is publicly available at [this repo](https://github.com/TuSimple/tusimple-benchmark/tree/master/doc/lane_detection) by TuSimple.
+~~Dataset is publicly available at [this repo](https://github.com/TuSimple/tusimple-benchmark/tree/master/doc/lane_detection) by TuSimple.~~
+Edit: Train, test and GTs are available from [this issue](https://github.com/TuSimple/tusimple-benchmark/issues/3) or run the script below:
+```
+./scripts/download_tusimple.sh
+```
 
 ## Requirements:
 

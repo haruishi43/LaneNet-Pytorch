@@ -43,7 +43,7 @@ def download_tusimple(
 ) -> None:
     from subprocess import Popen, PIPE
     def run_cmd(cmd: list) -> None:
-        p = Popen(cmd)
+        p = Popen(cmd, stderr=PIPE, stdout=PIPE)
         ret, err = p.communicate()
         assert p.returncode, err
     

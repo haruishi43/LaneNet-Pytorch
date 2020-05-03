@@ -13,3 +13,4 @@ unzip -d train_set train_set.zip
 unzip -d test_set test_set.zip
 rm train_set.zip
 rm test_set.zip
+mv test_label.json test_set/

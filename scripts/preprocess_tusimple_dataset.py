@@ -6,9 +6,10 @@ import json
 import os
 import os.path as osp
 import shutil
+from tqdm import tqdm
 
 import cv2
-import numpy as n
+import numpy as np
 
 TRAIN_URL = (
     "https://s3.us-east-2.amazonaws.com/"
@@ -27,8 +28,8 @@ def init_args():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--tusimple',
-        dest='tusimple',
+        '--src-dir',
+        dest='src_dir',
         type=str,
         help='The origin path of unzipped tusimple dataset'
     )
@@ -42,18 +43,19 @@ def download_tusimple(
 ) -> None:
     from subprocess import Popen, PIPE
     def run_cmd(cmd: list) -> None:
-        p = Popen(cmd, stderr=PIPE, stdout=PIPE, shell=True)
+        p = Popen(cmd)
         ret, err = p.communicate()
-        assert ret.returncode, err
+        assert p.returncode, err
     
-    run_cmd(['wget', TRAIN_URL])
-    run_cmd(['wget', TEST_URL])
-    run_cmd(['wget', TEST_LABEL_URL])
+    run_cmd(['wget', '-P', src_dir, TRAIN_URL])
+    run_cmd(['wget', '-P', src_dir, TEST_URL])
+    run_cmd(['wget', '-P', src_dir, TEST_LABEL_URL])
     run_cmd(['unzip', '-d', train_set_path, src_dir+'/train_set.zip'])
     run_cmd(['unzip', '-d', test_set_path, src_dir+'/test_set.zip'])
     run_cmd(['rm', src_dir+'/train_set.zip'])
     run_cmd(['rm', src_dir+'/test_set.zip'])
     run_cmd(['mv', src_dir+'/test_label.json', test_set_path+'/'])
+    print('Download complete!')
 
 
 def process_json_file(
@@ -77,7 +79,7 @@ def process_json_file(
     image_nums = len(os.listdir(ori_dst_dir))
 
     with open(json_file_path, 'r') as file:
-        for line_index, line in enumerate(file):
+        for line_index, line in enumerate(tqdm(file)):
             info_dict = json.loads(line)
 
             image_dir = osp.split(info_dict['raw_file'])[0]
@@ -147,7 +149,7 @@ def gen_sample(
     """
 
     with open(dst_file, 'w') as file:
-        for image_name in os.listdir(b_gt_image_dir):
+        for image_name in tqdm(os.listdir(b_gt_image_dir)):
             if not image_name.endswith('.png'):
                 continue
 
@@ -155,19 +157,19 @@ def gen_sample(
             instance_gt_image_path = osp.join(i_gt_image_dir, image_name)
             image_path = osp.join(image_dir, image_name)
 
-            assert osp.exists(image_path), '{:s} not exist'.format(image_path)
-            assert osp.exists(instance_gt_image_path), '{:s} not exist'.format(instance_gt_image_path)
+            assert osp.exists(image_path), f'{image_path} not exist'
+            assert osp.exists(instance_gt_image_path), f'{instance_gt_image_path} not exist'
 
             b_gt_image = cv2.imread(binary_gt_image_path, cv2.IMREAD_COLOR)
             i_gt_image = cv2.imread(instance_gt_image_path, cv2.IMREAD_COLOR)
             image = cv2.imread(image_path, cv2.IMREAD_COLOR)
 
             if b_gt_image is None or image is None or i_gt_image is None:
-                print('{:s}'.format(image_name))
+                print(image_name)
                 continue
             else:
-                info = '{:s} {:s} {:s}'.format(image_path, binary_gt_image_path, instance_gt_image_path)
-                file.write(info + '\n')
+                info = '{:s} {:s} {:s}\n'.format(image_path, binary_gt_image_path, instance_gt_image_path)
+                file.write(info)
 
 
 def process_tusimple_dataset(src_dir):
@@ -175,6 +177,7 @@ def process_tusimple_dataset(src_dir):
     :param src_dir:
     :return:
     """
+    assert osp.exists(src_dir)
 
     # Sources
     train_src_path = osp.join(src_dir, 'train_set')
@@ -182,55 +185,54 @@ def process_tusimple_dataset(src_dir):
 
     if not (osp.exists(train_src_path) and osp.exists(test_src_path)):
         # Download from URL
+        print('Downloading tuSimple dataset')
         download_tusimple(src_dir, train_src_path, test_src_path)
-
 
     # Destinations
     train_dst_path = osp.join(src_dir, 'train')
     test_dst_path = osp.join(src_dir, 'test')
-
     os.makedirs(train_dst_path, exist_ok=True)
     os.makedirs(test_dst_path, exist_ok=True)
 
-    for json_label_path in glob.glob('{:s}/train_set/label*.json'.format(src_dir)):
+    for json_label_path in glob.glob(f'{train_src_path}/label*.json'):
         json_label_name = osp.split(json_label_path)[-1]
-        shutil.copyfile(json_label_path, osp.join(training_folder_path, json_label_name))
+        shutil.copyfile(json_label_path, osp.join(train_dst_path, json_label_name))
 
-    for json_label_path in glob.glob('{:s}/test_set/test_label.json'.format(src_dir)):
+    for json_label_path in glob.glob(f'{test_src_path}/test_label.json'):
         json_label_name = osp.split(json_label_path)[-1]
-        shutil.copyfile(json_label_path, osp.join(testing_folder_path, json_label_name))
+        shutil.copyfile(json_label_path, osp.join(test_dst_path, json_label_name))
 
     # Training Dataset
-    gt_image_dir = osp.join(training_folder_path, 'gt_image')
-    gt_binary_dir = osp.join(training_folder_path, 'gt_binary_image')
-    gt_instance_dir = osp.join(training_folder_path, 'gt_instance_image')
+    gt_image_dir = osp.join(train_dst_path, 'gt_image')
+    gt_binary_dir = osp.join(train_dst_path, 'gt_binary_image')
+    gt_instance_dir = osp.join(train_dst_path, 'gt_instance_image')
 
     os.makedirs(gt_image_dir, exist_ok=True)
     os.makedirs(gt_binary_dir, exist_ok=True)
     os.makedirs(gt_instance_dir, exist_ok=True)
 
-    for json_label_path in glob.glob('{:s}/*.json'.format(training_folder_path)):
-        process_json_file(json_label_path, src_dir, gt_image_dir, gt_binary_dir, gt_instance_dir)
+    for json_label_path in glob.glob(f'{train_dst_path}/*.json'):
+        process_json_file(json_label_path, train_src_path, gt_image_dir, gt_binary_dir, gt_instance_dir)
 
-    dst_file = osp.join(training_folder_path, 'train.txt')
+    dst_file = osp.join(train_dst_path, 'train.txt')
     gen_sample(dst_file, gt_binary_dir, gt_instance_dir, gt_image_dir)
 
     # Testing Dataset
-    gt_image_dir = osp.join(testing_folder_path, 'gt_image')
-    gt_binary_dir = osp.join(testing_folder_path, 'gt_binary_image')
-    gt_instance_dir = osp.join(testing_folder_path, 'gt_instance_image')
+    gt_image_dir = osp.join(test_dst_path, 'gt_image')
+    gt_binary_dir = osp.join(test_dst_path, 'gt_binary_image')
+    gt_instance_dir = osp.join(test_dst_path, 'gt_instance_image')
 
     os.makedirs(gt_image_dir, exist_ok=True)
     os.makedirs(gt_binary_dir, exist_ok=True)
     os.makedirs(gt_instance_dir, exist_ok=True)
 
-    for json_label_path in glob.glob('{:s}/*.json'.format(testing_folder_path)):
-        process_json_file(json_label_path, src_dir, gt_image_dir, gt_binary_dir, gt_instance_dir)
+    for json_label_path in glob.glob(f'{test_dst_path}/*.json'):
+        process_json_file(json_label_path, test_src_path, gt_image_dir, gt_binary_dir, gt_instance_dir)
 
-    dst_file = osp.join(testing_folder_path, 'test.txt')
+    dst_file = osp.join(test_dst_path, 'test.txt')
     gen_sample(dst_file, gt_binary_dir, gt_instance_dir, gt_image_dir)
 
 
 if __name__ == '__main__':
     args = init_args()
-    process_tusimple_dataset(args.tusimple)
+    process_tusimple_dataset(args.src_dir)

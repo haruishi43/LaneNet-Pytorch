@@ -1,7 +1,10 @@
-.vscode
+# data
 model/saved_model
 notebook/torching.ipynb
+tmp
 
+# dev
+.vscode
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

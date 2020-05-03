@@ -31,7 +31,6 @@ __Edit__: Train, test and GTs are available from [this issue](https://github.com
 Preprocessing script is used as below:
 ```
 mkdir -p data/tusimple
-# create directories
 python scripts/preprocess_tusimple_dataset.py --src-dir data/tusimple
 ```
 

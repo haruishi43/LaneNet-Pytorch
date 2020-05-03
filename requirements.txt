@@ -1,4 +1,4 @@
-easydict
+tqdm
 numpy
 matplotlib
 pillow-simd

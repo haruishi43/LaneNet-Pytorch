@@ -41,15 +41,20 @@ def download_tusimple(
     train_set_path: str,
     test_set_path: str,
 ) -> None:
+    r"""Download tuSimple datast
+    :param src_dir:
+    :param train_set_path:
+    :param test_set_path
+    """
     from subprocess import Popen, PIPE
     def run_cmd(cmd: list) -> None:
         p = Popen(cmd, stderr=PIPE, stdout=PIPE)
         ret, err = p.communicate()
-        assert p.returncode, err
+        assert p.returncode == 0, f'{err.decode()}'
     
+    run_cmd(['wget', '-P', src_dir, TEST_LABEL_URL])
     run_cmd(['wget', '-P', src_dir, TRAIN_URL])
     run_cmd(['wget', '-P', src_dir, TEST_URL])
-    run_cmd(['wget', '-P', src_dir, TEST_LABEL_URL])
     run_cmd(['unzip', '-d', train_set_path, src_dir+'/train_set.zip'])
     run_cmd(['unzip', '-d', test_set_path, src_dir+'/test_set.zip'])
     run_cmd(['rm', src_dir+'/train_set.zip'])
@@ -78,6 +83,7 @@ def process_json_file(
 
     image_nums = len(os.listdir(ori_dst_dir))
 
+    print(f'Preprocessing images')
     with open(json_file_path, 'r') as file:
         for line_index, line in enumerate(tqdm(file)):
             info_dict = json.loads(line)
@@ -147,7 +153,7 @@ def gen_sample(
     :param image_dir:
     :return:
     """
-
+    print(f'Creating txt file @ {dst_file}')
     with open(dst_file, 'w') as file:
         for image_name in tqdm(os.listdir(b_gt_image_dir)):
             if not image_name.endswith('.png'):

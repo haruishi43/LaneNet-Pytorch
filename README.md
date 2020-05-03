@@ -21,7 +21,7 @@ pip install -r requirements.txt
 
 ~~Dataset is publicly available at [this repo](https://github.com/TuSimple/tusimple-benchmark/tree/master/doc/lane_detection) by TuSimple.~~
 
-__Edit__: Train, test and GTs are available from [this issue](https://github.com/TuSimple/tusimple-benchmark/wiki) or run the script below:
+__Edit__: Train, test and GTs are available from [this wiki](https://github.com/TuSimple/tusimple-benchmark/wiki) or run the script below:
 ```
 ./scripts/download_tusimple.sh
 ```
@@ -39,20 +39,5 @@ __Note__: This script also could be used to download the dataset, but will not a
 ## Usage:
 
 ### Training:
-
-All configurations and hyperparameters for training is in `config/global_config.py`.
-
-Create a directory to save the model:
-
-```
-mkdir data/saved_model
-```
-
-```
-python train.py  --dataset-file /path/to/dataset/train.txt
-```
-
-### Testing:
-
 
 ## TODO:

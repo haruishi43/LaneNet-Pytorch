@@ -41,7 +41,8 @@ def download_tusimple(
     train_set_path: str,
     test_set_path: str,
 ) -> None:
-    r"""Download tuSimple datast
+    r"""
+    Download tuSimple datast
     :param src_dir:
     :param train_set_path:
     :param test_set_path
@@ -140,12 +141,12 @@ def process_json_file(
 
 
 def gen_sample(
-    dst_file,
-    b_gt_image_dir,
-    i_gt_image_dir,
-    image_dir
+    dst_file: str,
+    b_gt_image_dir: str,
+    i_gt_image_dir: str,
+    image_dir: str,
 ) -> None:
-    """
+    r"""
     generate sample index file
     :param src_dir:
     :param b_gt_image_dir:
@@ -177,12 +178,12 @@ def gen_sample(
                 file.write(info)
 
 
-def process_tusimple_dataset(src_dir):
-    """
+def process_tusimple_dataset(src_dir: str) -> None:
+    r"""
     :param src_dir:
     :return:
     """
-    assert osp.exists(src_dir)
+    assert osp.exists(src_dir), f"ERR: {src_dir} does not exist!"
 
     # Sources
     train_src_path = osp.join(src_dir, 'train_set')

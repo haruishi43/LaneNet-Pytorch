@@ -4,6 +4,16 @@ An Pytorch implementation of for real time lane detection based on ["Towards End
 
 Referenced [TensorFlow implementation of LaneNet](https://github.com/MaybeShewill-CV/lanenet-lane-detection).
 
+## Requirements:
+
+- Python >= 3.5
+- [PyTorch](https://pytorch.org/)
+
+To install all dependencies:
+
+```
+pip install -r requirements.txt
+```
 
 ## Dataset:
 
@@ -18,29 +28,16 @@ __Edit__: Train, test and GTs are available from [this issue](https://github.com
 
 ### Preprocessing:
 
-Since the TuSimple dataset does not provide binary and instance images, I provided `data_creater.py` script to create the needed dataset.
+Preprocessing script is used as below:
 ```
+mkdir -p data/tusimple
 # create directories
-mkdir data/training_data
-mkdir data/training_data/gt_image_instance
-mkdir data/training_data/gt_image_binary
-
-python data_creater.py --dataset-path /path/to/tuSimple/dataset
+python scripts/preprocess_tusimple_dataset.py --src-dir data/tusimple
 ```
 
-## Requirements:
-
-- Python >= 3.5
-- [PyTorch](https://pytorch.org/)
-
-To install all dependencies:
-
-```
-pip install -r requirements.txt
-```
+__Note__: This script also could be used to download the dataset, but will not always work, so use `scripts/download_tusimple.sh` for downloading the dataset.
 
 ## Usage:
-
 
 ### Training:
 
@@ -55,8 +52,6 @@ mkdir data/saved_model
 ```
 python train.py  --dataset-file /path/to/dataset/train.txt
 ```
-
-
 
 ### Testing:
 

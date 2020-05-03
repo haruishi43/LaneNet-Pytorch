@@ -59,11 +59,11 @@ def download_tusimple(
 
 
 def process_json_file(
-    json_file_path,
-    src_dir,
-    ori_dst_dir,
-    binary_dst_dir,
-    instance_dst_dir
+    json_file_path: str,
+    src_dir: str,
+    ori_dst_dir: str,
+    binary_dst_dir: str,
+    instance_dst_dir: str,
 ) -> None:
     r"""
     :param json_file_path:
@@ -130,7 +130,7 @@ def process_json_file(
             cv2.imwrite(dst_instance_image_path, dst_instance_image)
             cv2.imwrite(dst_rgb_image_path, src_image)
 
-            print('Process {:s} success'.format(image_name))
+            # print('Process {:s} success'.format(image_name))
 
 
 def gen_sample(
@@ -165,7 +165,6 @@ def gen_sample(
             image = cv2.imread(image_path, cv2.IMREAD_COLOR)
 
             if b_gt_image is None or image is None or i_gt_image is None:
-                print(image_name)
                 continue
             else:
                 info = '{:s} {:s} {:s}\n'.format(image_path, binary_gt_image_path, instance_gt_image_path)

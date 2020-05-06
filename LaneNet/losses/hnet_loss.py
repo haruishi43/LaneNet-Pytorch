@@ -38,7 +38,6 @@ class HNetLoss(nn.modules.loss):
         H, preds = self._hnet()
         x_transformation_back = torch.matmul(torch.inverse(H), preds)
         loss = torch.mean(torch.pow(self.gt_pts.t()[0, :] - x_transformation_back[0, :], 2))
-
         return loss
 
     def _hnet(self):

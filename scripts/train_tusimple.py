@@ -10,6 +10,11 @@ import torch
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
+from LaneNet import (
+    build_transforms,
+    build_optimizer,
+    build_lr_scheduler,
+)
 from LaneNet.datasets import tuSimpleDataset as Dataset
 from LaneNet.transforms import Rescale
 from LaneNet.losses import compute_loss
@@ -123,11 +128,17 @@ def main():
     train_dataset_file = os.path.join(args.dataset, 'train.txt')
     val_dataset_file = os.path.join(args.dataset, 'val.txt')
 
-    train_dataset = Dataset(train_dataset_file, transform=transforms.Compose([Rescale((512, 256))]))
+    transform_tr, transform_ts = build_transforms(
+        height=256,
+        width=512,
+        transforms='random_flip',
+    )
+
+    train_dataset = Dataset(train_dataset_file, transform=transform_tr)
     train_loader = DataLoader(train_dataset, batch_size=args.bs, shuffle=True)
 
     if args.val:
-        val_dataset = Dataset(val_dataset_file, transform=transforms.Compose([Rescale((512, 256))]))
+        val_dataset = Dataset(val_dataset_file, transform=transform_ts)
         val_loader = DataLoader(val_dataset, batch_size=args.bs, shuffle=True)
 
     model = LaneNet()

@@ -55,5 +55,5 @@ class LaneNet(nn.Module):
         return {
             'instance_seg_logits': pix_embedding,
             'binary_seg_pred': binary_seg_ret,
-            'binary_seg_logits': decode_logits
+            'binary_seg_logits': decode_logits,
         }

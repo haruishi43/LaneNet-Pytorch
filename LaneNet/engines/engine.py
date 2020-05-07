@@ -42,7 +42,7 @@ class Engine(object):
 
     def run(
         self,
-        save_dir='log',
+        save_dir='logs',
         max_epoch=0,
         start_epoch=0,
         print_freq=5,
@@ -66,7 +66,6 @@ class Engine(object):
                 self.eval(
                     epoch,
                     self.writer,
-                    save_dir=save_dir,
                 )
                 self._save_checkpoint(epoch, save_dir)
         
@@ -75,7 +74,6 @@ class Engine(object):
             self.eval(
                 epoch,
                 self.writer,
-                save_dir=save_dir,
             )
             self._save_checkpoint(epoch, save_dir)
 

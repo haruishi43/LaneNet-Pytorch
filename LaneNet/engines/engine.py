@@ -207,7 +207,7 @@ class Engine(object):
                 instance = instance.cuda()
 
             # output process
-            net_output = model(image)
+            net_output = self.model(image)
             (
                 total_loss, binary_loss, instance_loss,
                 out, val_iou,

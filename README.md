@@ -40,4 +40,22 @@ __Note__: This script also could be used to download the dataset, but will not a
 
 ### Training:
 
+```
+python scripts/run_tusimple.py --run-type train --exp-config configs/default.yaml
+```
+
+### Evaluation:
+
+```
+python scripts/run_tusimple.py --run-type test --exp-config configs/default.yaml
+```
+
 ## TODO:
+
+- [] debug discriminative loss since mean IoU isn't going up during training
+
+
+## Acknowledgements:
+
+- [pytorch-lanenet](https://github.com/klintan/pytorch-lanenet)
+- [lanenet-lane-detection](https://github.com/MaybeShewill-CV/lanenet-lane-detection)

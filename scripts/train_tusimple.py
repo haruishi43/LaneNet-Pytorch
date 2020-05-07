@@ -11,7 +11,6 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 
 from LaneNet import (
-    build_transforms,
     build_optimizer,
     build_lr_scheduler,
 )
@@ -48,7 +47,12 @@ def compose_img(image_data, out, binary_label, pix_embedding, instance_label, i)
     return val_gt
 
 
-def train(train_loader, model, optimizer, epoch):
+def train(
+    train_loader,
+    model,
+    optimizer,
+    epoch
+):
     batch_time = AverageMeter()
     mean_iou = AverageMeter()
     total_losses = AverageMeter()
@@ -128,23 +132,24 @@ def main():
     train_dataset_file = os.path.join(args.dataset, 'train.txt')
     val_dataset_file = os.path.join(args.dataset, 'val.txt')
 
-    transform_tr, transform_ts = build_transforms(
-        height=256,
-        width=512,
-        transforms='random_flip',
+    train_dataset = Dataset(
+        dataset_path=train_dataset_file,
+        mode='train',
     )
-
-    train_dataset = Dataset(train_dataset_file, transform=transform_tr)
     train_loader = DataLoader(train_dataset, batch_size=args.bs, shuffle=True)
 
     if args.val:
-        val_dataset = Dataset(val_dataset_file, transform=transform_ts)
+        val_dataset = Dataset(
+            dataset_path=val_dataset_file,
+            mode='test',
+        )
         val_loader = DataLoader(val_dataset, batch_size=args.bs, shuffle=True)
 
     model = LaneNet()
     model.to(DEVICE)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    optimizer = build_optimizer(model, optim='adam', lr=args.lr)
+    lr_scheduler = build_lr_scheduler(optimizer, lr_scheduler='single_step', stepsize=50, gamma=0.1)
     print(f"{args.epochs} epochs {len(train_dataset)} training samples\n")
 
     for epoch in range(0, args.epochs):

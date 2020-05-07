@@ -15,6 +15,7 @@ from LaneNet.datasets import tuSimpleDataset as Dataset
 from LaneNet.losses import compute_loss
 from LaneNet.models import LaneNet
 from LaneNet.engines import Engine
+from LaneNet.utils import load_pretrained_weights, resume_from_checkpoint
 
 
 def main():
@@ -64,100 +65,119 @@ def run_exp(exp_config: str, run_type: str, opts=None) -> None:
         config.DATASET.root,
         config.DATASET.test_txt,
     )
-    if osp.exists(val_dataset_file):
-        Dataset.create_val(
-            train_dataset_file,
-            val_dataset_file,
-            config.DATASET.val_ratio)
 
-    train_dataset = Dataset(
-        dataset_path=train_dataset_file,
-        mode='train',
-        height=config.DATASET.height,
-        width=config.DATASET.width,
-    )
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=config.DATASET.batch_size,
-        shuffle=config.DATASET.shuffle,
-        sampler=None,
-        batch_sampler=None,
-        num_workers=config.DATASET.num_workers,
-        drop_last=True,
-    )
-    val_dataset = Dataset(
-        dataset_path=val_dataset_file,
-        mode='test',
-        height=config.DATASET.height,
-        width=config.DATASET.width,
-    )
-    val_loader = DataLoader(
-        val_dataset,
-        batch_size=config.DATASET.batch_size,
-        shuffle=False,
-        sampler=None,
-        batch_sampler=None,
-        num_workers=config.DATASET.num_workers,
-        drop_last=False,
-    )
+    if run_type == 'train':
+        if not osp.exists(val_dataset_file):
+            Dataset.create_val(
+                train_dataset_file,
+                val_dataset_file,
+                config.DATASET.val_ratio)
 
-    model = LaneNet()
-    model.cuda()
+        train_dataset = Dataset(
+            dataset_path=train_dataset_file,
+            mode='train',
+            height=config.DATASET.height,
+            width=config.DATASET.width,
+        )
+        train_loader = DataLoader(
+            train_dataset,
+            batch_size=config.DATASET.batch_size,
+            shuffle=config.DATASET.shuffle,
+            sampler=None,
+            batch_sampler=None,
+            num_workers=config.DATASET.num_workers,
+            drop_last=True,
+        )
+        val_dataset = Dataset(
+            dataset_path=val_dataset_file,
+            mode='test',
+            height=config.DATASET.height,
+            width=config.DATASET.width,
+        )
+        val_loader = DataLoader(
+            val_dataset,
+            batch_size=config.DATASET.batch_size,
+            shuffle=False,
+            sampler=None,
+            batch_sampler=None,
+            num_workers=config.DATASET.num_workers,
+            drop_last=False,
+        )
 
-    optimizer = build_optimizer(
-        model,
-        optim=config.TRAIN.optim,
-        lr=config.TRAIN.lr,
-    )
-    lr_scheduler = build_lr_scheduler(
-        optimizer,
-        lr_scheduler=config.TRAIN.lr_scheduler,
-        stepsize=config.TRAIN.step_size,
-        gamma=config.TRAIN.gamma,
-        max_epoch=config.TRAIN.max_epoch
-    )
-    print(f"{config.TRAIN.max_epoch} epochs {len(train_dataset)} training samples\n")
+        model = LaneNet()
+        if config.use_gpu:
+            model = model.cuda()
 
-    # Init engine
-    engine = Engine(
-        model=model,
-        optimizer=optimizer,
-        lr_scheduler=lr_scheduler,
-        train_loader=train_loader,
-        val_loader=val_loader,
-        use_gpu=config.use_gpu,
-    )
+        #TODO: resume from checkpoint
 
-    # Run engine
-    engine.run(
-        save_dir=config.save_dir,
-        max_epoch=config.TRAIN.max_epoch,
-        start_epoch=0,
-        print_freq=config.TRAIN.print_freq,
-        start_eval=config.TRAIN.start_eval,
-        eval_freq=config.TRAIN.eval_freq,
-    )
+        optimizer = build_optimizer(
+            model,
+            optim=config.TRAIN.optim,
+            lr=config.TRAIN.lr,
+        )
+        lr_scheduler = build_lr_scheduler(
+            optimizer,
+            lr_scheduler=config.TRAIN.lr_scheduler,
+            stepsize=config.TRAIN.step_size,
+            gamma=config.TRAIN.gamma,
+            max_epoch=config.TRAIN.max_epoch
+        )
+        print(f"{config.TRAIN.max_epoch} epochs {len(train_dataset)} training samples\n")
 
-    test_dataset = Dataset(
-        dataset_path=test_dataset_file,
-        mode='test',
-        height=config.DATASET.height,
-        width=config.DATASET.width,
-    )
-    test_loader = DataLoader(
-        test_dataset,
-        batch_size=1,
-        shuffle=False,
-        sampler=None,
-        batch_sampler=None,
-        num_workers=0,
-        drop_last=False,
-    )
+        # Init engine
+        engine = Engine(
+            model=model,
+            optimizer=optimizer,
+            lr_scheduler=lr_scheduler,
+            train_loader=train_loader,
+            val_loader=val_loader,
+            use_gpu=config.use_gpu,
+        )
 
-    engine.test(
-        test_loader
-    )
+        # Run engine
+        engine.run(
+            save_dir=config.save_dir,
+            max_epoch=config.TRAIN.max_epoch,
+            start_epoch=0,
+            print_freq=config.TRAIN.print_freq,
+            start_eval=config.TRAIN.start_eval,
+            eval_freq=config.TRAIN.eval_freq,
+        )
+    elif run_type == 'test':
+        test_dataset = Dataset(
+            dataset_path=test_dataset_file,
+            mode='test',
+            height=config.DATASET.height,
+            width=config.DATASET.width,
+        )
+        test_loader = DataLoader(
+            test_dataset,
+            batch_size=1,
+            shuffle=False,
+            sampler=None,
+            batch_sampler=None,
+            num_workers=0,
+            drop_last=False,
+        )
 
+        model = LaneNet()
+        if config.use_gpu:
+            model = model.cuda()
+
+        assert osp.exists(config.checkpoint_path)
+        load_pretrained_weights(model, config.checkpoint_path)
+
+        # Init engine
+        engine = Engine(
+            model=model,
+            train_loader=train_loader,
+            val_loader=val_loader,
+            use_gpu=config.use_gpu,
+        )
+
+        engine.test(test_loader)
+    else:
+        print('Err')
 
 if __name__ == '__main__':
     main()

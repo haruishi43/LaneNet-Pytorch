@@ -26,10 +26,10 @@ class Engine(object):
     def __init__(
         self,
         model: nn.Module,
-        optimizer: Optimizer,
-        lr_scheduler: object,
-        train_loader: DataLoader,
-        val_loader: DataLoader,
+        optimizer: Optimizer = None,
+        lr_scheduler: object = None,
+        train_loader: DataLoader = None,
+        val_loader: DataLoader = None,
         use_gpu: bool = True,
     ) -> None:
         self.model = model
@@ -49,7 +49,7 @@ class Engine(object):
         start_eval=0,
         eval_freq=10,
     ) -> None:
-        with self.writer is None:
+        if self.writer is None:
             self.writer = SummaryWriter(log_dir=save_dir)
 
         time_start = time.time()

@@ -817,7 +817,7 @@ class DANetHead(nn.Module):
         return sasc_output
 
 
-class PAM(Module):
+class PAM(nn.Module):
     """
     Position attention module
     """
@@ -861,7 +861,7 @@ class PAM(Module):
         return out
 
 
-class CAM(Module):
+class CAM(nn.Module):
     """
     Channel attention module
     """

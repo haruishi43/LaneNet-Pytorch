@@ -3,6 +3,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn.modules.loss import _Loss
 
 
 def compute_loss(net_output, binary_label, instance_label):
@@ -34,7 +35,7 @@ def compute_loss(net_output, binary_label, instance_label):
     return total_loss, binary_loss, instance_loss, out, iou
 
 
-class DiscriminativeLoss(nn.modules.loss):
+class DiscriminativeLoss(_Loss):
     """
     From https://github.com/nyoki-mtl/pytorch-discriminative-loss/blob/master/src/loss.py
     This is the implementation of following paper:

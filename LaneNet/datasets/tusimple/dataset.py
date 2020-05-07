@@ -149,7 +149,7 @@ class tuSimpleDataset(Dataset):
         val_ratio: float = 0.2, 
     ) -> None:
         new_train_dataset_file = osp.join(
-            osp.direname(train_dataset_file),
+            osp.dirname(train_dataset_file),
             osp.splitext(osp.basename(train_dataset_file))[0] + '_original' + '.txt',
         )
         assert not osp.exists(new_train_dataset_file)

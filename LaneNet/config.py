@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 
+from typing import (
+    Optional,
+    Union,
+    List
+)
+
 import yacs.config
 
 # Default Habitat config node
@@ -47,6 +53,7 @@ _C.TRAIN.step_size = 50
 _C.TRAIN.gamma = 0.1
 # 
 _C.save_dir = 'log'
+_C.checkpoint_path = 'log/model.pth.tar-60'
 
 
 def get_config(

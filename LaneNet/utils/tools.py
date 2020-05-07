@@ -13,11 +13,6 @@ import PIL
 import torch
 from PIL import Image
 
-__all__ = [
-    'mkdir_if_missing', 'check_isfile', 'read_json', 'write_json',
-    'set_random_seed', 'download_url', 'read_image', 'collect_env_info'
-]
-
 
 def mkdir_if_missing(dirname):
     r"""Creates dirname if it is missing.

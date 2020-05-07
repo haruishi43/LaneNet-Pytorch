@@ -52,7 +52,7 @@ python scripts/run_tusimple.py --run-type test --exp-config configs/default.yaml
 
 ## TODO:
 
-- [] debug discriminative loss since mean IoU isn't going up during training
+- [ ] debug discriminative loss since mean IoU isn't going up during training
 
 
 ## Acknowledgements:

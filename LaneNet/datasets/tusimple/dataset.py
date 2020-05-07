@@ -145,6 +145,7 @@ class tuSimpleDataset(Dataset):
             bin = bin.squeeze(0)
         elif self.mode == 'test':
             img, bin, ins = self.transform_test(img, bin, ins)
+            bin = bin.squeeze(0)
         else:
             img = np.array(img)
             bin = np.array(bin)

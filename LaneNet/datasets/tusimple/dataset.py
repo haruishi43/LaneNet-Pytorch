@@ -2,6 +2,7 @@
 
 import os
 import os.path as osp
+from shutil import copyfile
 import random
 
 import torch
@@ -140,3 +141,42 @@ class tuSimpleDataset(Dataset):
             'binary': bin,
             'instance': ins,
         }
+
+    @staticmethod
+    def create_val(
+        train_dataset_file: str,
+        val_dataset_file: str,
+        val_ratio: float = 0.2, 
+    ) -> None:
+        new_train_dataset_file = osp.join(
+            osp.direname(train_dataset_file),
+            osp.splitext(osp.basename(train_dataset_file))[0] + '_original' + '.txt',
+        )
+        assert not osp.exists(new_train_dataset_file)
+        copyfile(train_dataset_file, new_train_dataset_file)
+        data = []
+        with open(train_dataset_file, 'r') as f:
+            for line in f:
+                info_tmp = line.strip(' ').split()
+                d = [a for a in line.rstrip('\n').split(' ')]
+                data.append(d)
+
+        random.seed(0)  # seed is kept the same
+        random.shuffle(data)
+
+        train_data = data[int(len(data)*val_ratio):]
+        val_data = data[:int(len(data)*val_ratio)]
+
+        with open(train_dataset_file, 'w') as f:
+            for d in train_data:
+                info = '{:s} {:s} {:s}\n'.format(
+                    d[0], d[1], d[2])
+                f.write(info)
+
+        with open(val_dataset_file, 'w') as f:
+            for d in val_data:
+                info = '{:s} {:s} {:s}\n'.format(
+                    d[0], d[1], d[2])
+                f.write(info)
+
+        print('saved new dataset')

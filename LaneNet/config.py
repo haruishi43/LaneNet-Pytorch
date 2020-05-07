@@ -16,8 +16,37 @@ CONFIG_FILE_SEPARATOR = ","
 # Config definition
 # -----------------------------------------------------------------------------
 _C = CN()
-_C.SEED = 100
-#
+_C.seed = 0
+_C.use_gpu = True
+# Dataset
+_C.DATASET = CN()
+_C.DATASET.root = "data/tusimple"
+_C.DATASET.train_txt = "train/train.txt"
+_C.DATASET.val_txt = "train/val.txt"
+_C.DATASET.test_txt = "test/test.txt"
+_C.DATASET.val_ratio = 0.2
+_C.DATASET.height = 256
+_C.DATASET.width = 512
+_C.DATASET.batch_size = 32
+_C.DATASET.shuffle = True
+_C.DATASET.num_workers = 4
+# Train
+_C.TRAIN = CN()
+_C.TRAIN.max_epoch = 50
+_C.TRAIN.print_freq = 5
+_C.TRAIN.start_eval = 1
+_C.TRAIN.eval_freq = 10
+_C.TRAIN.optim = 'adam'
+_C.TRAIN.lr = 3e-5
+_C.TRAIN.weight_decay=5e-04
+_C.TRAIN.momentum = 0.9
+_C.TRAIN.adam_beta1 = 0.9
+_C.TRAIN.adam_beta2 = 0.99
+_C.TRAIN.lr_scheduler = 'single_step'
+_C.TRAIN.step_size = 50
+_C.TRAIN.gamma = 0.1
+# 
+_C.save_dir = 'log'
 
 
 def get_config(

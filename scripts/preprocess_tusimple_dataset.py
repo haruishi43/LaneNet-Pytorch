@@ -155,7 +155,7 @@ def gen_sample(
     :return:
     """
     print(f'Creating txt file @ {dst_file}')
-    with open(dst_file, 'w') as file:
+    with open(dst_file, 'w') as f:
         for image_name in tqdm(os.listdir(b_gt_image_dir)):
             if not image_name.endswith('.png'):
                 continue
@@ -175,7 +175,7 @@ def gen_sample(
                 continue
             else:
                 info = '{:s} {:s} {:s}\n'.format(image_path, binary_gt_image_path, instance_gt_image_path)
-                file.write(info)
+                f.write(info)
 
 
 def process_tusimple_dataset(src_dir: str) -> None:

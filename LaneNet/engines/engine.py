@@ -6,6 +6,8 @@ import datetime
 import os.path as osp
 
 import numpy as np
+import cv2
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -14,7 +16,10 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
 from ..losses import compute_loss
-from ..utils import AverageMeter, compose_img
+from ..utils import (
+    AverageMeter, compose_img, mkdir_if_missing,
+    save_checkpoint
+)
 
 
 class Engine(object):
@@ -29,7 +34,7 @@ class Engine(object):
     ) -> None:
         self.model = model
         self.optimizer = optimizer
-        self.lr_scheduler
+        self.scheduler = lr_scheduler
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.use_gpu = use_gpu
@@ -40,17 +45,10 @@ class Engine(object):
         save_dir='log',
         max_epoch=0,
         start_epoch=0,
-        print_freq=10,
+        print_freq=5,
         start_eval=0,
-        eval_freq=5,
-        test_only=False,
+        eval_freq=10,
     ) -> None:
-        if test_only:
-            self.test(
-                0
-            )
-            return
-
         with self.writer is None:
             self.writer = SummaryWriter(log_dir=save_dir)
 
@@ -65,7 +63,7 @@ class Engine(object):
                 and eval_freq > 0 \
                 and (epoch+1) % eval_freq == 0 \
                 and (epoch + 1) != max_epoch:
-                self.test(
+                self.eval(
                     epoch,
                     self.writer,
                     save_dir=save_dir,
@@ -74,7 +72,7 @@ class Engine(object):
         
         if max_epoch > 0:
             print('=> Final test')
-            self.test(
+            self.eval(
                 epoch,
                 self.writer,
                 save_dir=save_dir,
@@ -99,11 +97,11 @@ class Engine(object):
         total_losses = AverageMeter()
         binary_losses = AverageMeter()
         instance_losses = AverageMeter()
-        end = time.time()
-        step = 0
 
-        for idx, data in enumerate(iter(self.train_loader)):
-            step += 1
+        self.model.train()
+        num_batches = len(self.train_loader)
+        end = time.time()
+        for batch_idx, data in enumerate(self.train_loader):
             
             image, binary, instance = self._parse_data(data)
             if self.use_gpu:
@@ -112,10 +110,13 @@ class Engine(object):
                 instance = instance.cuda()
 
             # forward pass
-            net_output = model(image)
+            net_output = self.model(image)
 
             # compute loss
-            total_loss, binary_loss, instance_loss, out, train_iou = compute_loss(
+            (
+                total_loss, binary_loss,
+                instance_loss, out, train_iou
+            ) = compute_loss(
                 net_output, binary, instance
             )
 
@@ -126,57 +127,81 @@ class Engine(object):
             mean_iou.update(train_iou, image.size()[0])
 
             # reset gradients
-            optimizer.zero_grad()
+            self.optimizer.zero_grad()
 
             # backpropagate
             total_loss.backward()
 
             # update weights
-            optimizer.step()
+            self.optimizer.step()
 
             # update batch time
             batch_time.update(time.time() - end)
             end = time.time()
 
-            if step % 500 == 0:
+            if (batch_idx+1) % print_freq == 0:
+                # estimate remaining time
+                eta_seconds = batch_time.avg * (
+                    num_batches - (batch_idx+1) + (
+                        max_epoch - (epoch+1)
+                    ) * num_batches
+                )
+                eta_str = str(datetime.timedelta(seconds=int(eta_seconds)))
                 print(
-                    "Epoch {ep} Step {st} |({batch}/{size})| ETA: {et:.2f}|Total loss:{tot:.5f}|Binary loss:{bin:.5f}|Instance loss:{ins:.5f}|IoU:{iou:.5f}".format(
-                        ep=epoch + 1,
-                        st=step,
-                        batch=idx + 1,
-                        size=len(train_loader),
-                        et=batch_time.val,
-                        tot=total_losses.avg,
-                        bin=binary_losses.avg,
-                        ins=instance_losses.avg,
-                        iou=train_iou,
-                    ))
-                sys.stdout.flush()
-                train_img_list = []
-                for i in range(3):
-                    train_img_list.append(
-                        compose_img(image, out, binary, net_output["instance_seg_logits"], instance, i))
-                train_img = np.concatenate(train_img_list, axis=1)
-                cv2.imwrite(osp.join("./output", "train_" + str(epoch + 1) + "_step_" + str(step) + ".png"), train_img)
+                    'Epoch: [{0}/{1}][{2}/{3}]\t'
+                    'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\n'
+                    'Tot Loss {total_loss.val:.4f} ({total_loss.avg:.4f})\t'
+                    'Bin Loss {binary_loss.val:.4f} ({binary_loss.avg:.4f})\n'
+                    'Ins Loss {instance_loss.val:.4f} ({instance_loss.avg:.4f})\t'
+                    'Mean IoU {mean_iou.val:.2f} ({mean_iou.avg:.2f})\n'
+                    'Lr {lr:.6f}\t'
+                    'eta {eta}'.format(
+                        epoch + 1,
+                        max_epoch,
+                        batch_idx + 1,
+                        num_batches,
+                        batch_time=batch_time,
+                        total_loss=total_losses,
+                        binary_loss=binary_losses,
+                        instance_loss=instance_losses,
+                        mean_iou=mean_iou,
+                        lr=self.optimizer.param_groups[0]['lr'],
+                        eta=eta_str
+                    )
+                )
+
+            if writer is not None:
+                n_iter = epoch*num_batches + batch_idx
+                writer.add_scalar('Train/Time', batch_time.avg, n_iter)
+                writer.add_scalar('Train/Total Loss', total_losses.avg, n_iter)
+                writer.add_scalar('Train/Binary Loss', binary_losses.avg, n_iter)
+                writer.add_scalar('Train/Instance Loss', instance_losses.avg, n_iter)
+                writer.add_scalar('Train/Acc', mean_iou.avg, n_iter)
+                writer.add_scalar(
+                    'Train/Lr', self.optimizer.param_groups[0]['lr'], n_iter
+                )
+            
+            if self.scheduler is not None:
+                self.scheduler.step()
 
     @torch.no_grad()
-    def test(
+    def eval(
         self,
         epoch,
         writer,
     ) -> None:
         self.model.eval()
-        step = 0
+        
         batch_time = AverageMeter()
         total_losses = AverageMeter()
         binary_losses = AverageMeter()
         instance_losses = AverageMeter()
         mean_iou = AverageMeter()
-        end = time.time()
+        
         val_img_list = []
-        # val_img_md5 = open(os.path.join(im_path, "val_" + str(epoch + 1) + ".txt"), "w")
-        for idx, data in enumerate(val_loader):
-            step += 1
+        num_batches = len(self.val_loader)
+        end = time.time()
+        for batch_idx, data in enumerate(self.val_loader):
             image, binary, instance = self._parse_data(data)
             if self.use_gpu:
                 image = image.cuda()
@@ -185,20 +210,33 @@ class Engine(object):
 
             # output process
             net_output = model(image)
-            total_loss, binary_loss, instance_loss, out, val_iou = compute_loss(
-                net_output, binary, instance)
+            (
+                total_loss, binary_loss, instance_loss,
+                out, val_iou,
+            ) = compute_loss(
+                net_output, binary, instance
+            )
             total_losses.update(total_loss.item(), image.size()[0])
             binary_losses.update(binary_loss.item(), image.size()[0])
             instance_losses.update(instance_loss.item(), image.size()[0])
             mean_iou.update(val_iou, image.size()[0])
 
-            # if step % 100 == 0:
-            #    val_img_list.append(
-            #        compose_img(image_data, out, binary_label, net_output["instance_seg_logits"], instance_label, 0))
-            #    val_img_md5.write(input_data["img_name"][0] + "\n")
-            #    lane_cluster_and_draw(image_data, net_output["binary_seg_pred"], net_output["instance_seg_logits"], input_data["o_size"], input_data["img_name"], json_path)
-        batch_time.update(time.time() - end)
-        end = time.time()
+            batch_time.update(time.time() - end)
+            end = time.time()
+
+            if batch_idx+1 == num_batches:
+                img_list = []
+                for i in range(3):
+                    img_list.append(
+                        compose_img(
+                            image, out, binary,
+                            net_output["instance_seg_logits"],
+                            instance, i
+                        )
+                    )
+                img = np.concatenate(img_list, axis=1)
+                mkdir_if_missing("./output")
+                cv2.imwrite(osp.join(f"./output/val_{str(epoch+1)}.png"), img)
 
         print(
             "Epoch {ep} Validation Report | ETA: {et:.2f}|Total:{tot:.5f}|Binary:{bin:.5f}|Instance:{ins:.5f}|IoU:{iou:.5f}".format(
@@ -208,14 +246,70 @@ class Engine(object):
                 bin=binary_losses.avg,
                 ins=instance_losses.avg,
                 iou=mean_iou.avg,
-            ))
-        sys.stdout.flush()
-        val_img = np.concatenate(val_img_list, axis=1)
-        # cv2.imwrite(os.path.join(im_path, "val_" + str(epoch + 1) + ".png"), val_img)
-        # val_img_md5.close()
+            )
+        )
+
+    @torch.no_grad()
+    def test(
+        self,
+        test_loader: DataLoader,
+    ):
+        self.model.eval()
+        
+        batch_time = AverageMeter()
+        total_losses = AverageMeter()
+        binary_losses = AverageMeter()
+        instance_losses = AverageMeter()
+        mean_iou = AverageMeter()
+        
+        num_batches = len(test_loader)
+        end = time.time()
+        for batch_idx, data in enumerate(test_loader):
+            image, binary, instance = self._parse_data(data)
+            if self.use_gpu:
+                image = image.cuda()
+                binary = binary.cuda()
+                instance = instance.cuda()
+
+            # output process
+            net_output = model(image)
+            (
+                total_loss, binary_loss, instance_loss, out, iou
+            ) = compute_loss(
+                net_output, binary, instance
+            )
+            total_losses.update(total_loss.item(), image.size()[0])
+            binary_losses.update(binary_loss.item(), image.size()[0])
+            instance_losses.update(instance_loss.item(), image.size()[0])
+            mean_iou.update(iou, image.size()[0])
+            if batch_idx+1 == num_batches:
+                img_list = []
+                for i in range(3):
+                    img_list.append(
+                        compose_img(
+                            image, out, binary,
+                            net_output["instance_seg_logits"],
+                            instance, i
+                        )
+                    )
+                img = np.concatenate(img_list, axis=1)
+                mkdir_if_missing('./output')
+                cv2.imwrite(osp.join("./output/test.png"), img)
 
     def _parse_data(self, data):
         image = data['image']
         binary = data['binary']
         instance = data['instance']
         return image, binary, instance
+
+    def _save_checkpoint(self, epoch, save_dir, is_best=False):
+        save_checkpoint(
+            {
+                'state_dict': self.model.state_dict(),
+                'epoch': epoch + 1,
+                'optimizer': self.optimizer.state_dict(),
+                'scheduler': self.scheduler.state_dict(),
+            },
+            save_dir,
+            is_best=is_best
+        )

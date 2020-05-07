@@ -2,3 +2,4 @@
 
 from .cli import *
 from .average_meter import *
+from .visualize import *

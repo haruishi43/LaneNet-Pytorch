@@ -40,7 +40,8 @@ class tuSimpleDataset(Dataset):
         self._shuffle()
 
         self.mode = mode
-        self.resize = Resize((height, width))
+        self.resize_img = Resize((height, width), interpolation=Image.BILINEAR)
+        self.resize_lbl = Resize((height, width), interpolation=Image.NEAREST)
         self.toTensor = ToTensor()
         self.normalize = Normalize(mean=norm_mean, std=norm_std)
         self.color_jitter = ColorJitter(
@@ -55,10 +56,16 @@ class tuSimpleDataset(Dataset):
         # number of channels, number of unique pixel values, subtracting no label
         # adapted from here https://github.com/nyoki-mtl/pytorch-discriminative-loss/blob/master/src/dataset.py
         no_of_instances = self.n_labels
-        ins = np.zeros((no_of_instances, label_instance_img.shape[0], label_instance_img.shape[1]))
+        ins = np.zeros(
+            (
+                label_instance_img.shape[0],
+                label_instance_img.shape[1],
+                no_of_instances
+            ),
+            dtype=np.uint8
+        )
         for _ch, label in enumerate(np.unique(label_instance_img)[1:]):
-            ins[_ch, label_instance_img == label] = 1
-
+            ins[label_instance_img == label, _ch] = 1
         return ins
 
     def __len__(self):
@@ -66,9 +73,9 @@ class tuSimpleDataset(Dataset):
 
     def transform_train(self, img, bin, ins):
         # resize
-        img = self.resize(img)
-        bin = self.resize(bin)
-        ins = self.resize(ins)
+        img = self.resize_img(img)
+        bin = self.resize_lbl(bin)
+        ins = self.resize_lbl(ins)
 
         # random horizontal flip
         if random.random() > 0.5:
@@ -77,11 +84,12 @@ class tuSimpleDataset(Dataset):
             ins = TF.hflip(ins)
         
         # make it binary?
-        bin = np.zeros([bin.shape[0], bin.shape[1]], dtype=np.uint8)
-        mask = np.where((bin[:, :, :] != [0, 0, 0]).all(axis=2))
-        bin[mask] = 1
+        bin = np.array(bin)
+        _bin = np.zeros([bin.shape[0], bin.shape[1]], dtype=np.uint8)
+        _bin = np.where(bin != 0, 1, 0)
 
         # split instance gt
+        ins = np.array(ins)
         ins = self._split_instance_gt(ins)
 
         # color jitter
@@ -89,7 +97,7 @@ class tuSimpleDataset(Dataset):
 
         # to Tensor
         img = self.toTensor(img)
-        bin = self.toTensor(bin)
+        bin = self.toTensor(_bin)
         ins = self.toTensor(ins)
 
         # normalize
@@ -99,21 +107,22 @@ class tuSimpleDataset(Dataset):
 
     def transform_test(self, img, bin, ins):
         # resize
-        img = self.resize(img)
-        bin = self.resize(bin)
-        ins = self.resize(ins)
+        img = self.resize_img(img)
+        bin = self.resize_lbl(bin)
+        ins = self.resize_lbl(ins)
 
         # make it binary?
-        bin = np.zeros([bin.shape[0], bin.shape[1]], dtype=np.uint8)
-        mask = np.where((bin[:, :, :] != [0, 0, 0]).all(axis=2))
-        bin[mask] = 1
+        bin = np.array(bin)
+        _bin = np.zeros([bin.shape[0], bin.shape[1]], dtype=np.uint8)
+        _bin = np.where(bin != 0, 1, 0)
 
         # split instance gt
+        ins = np.array(ins)
         ins = self._split_instance_gt(ins)
 
         # to Tensor
         img = self.toTensor(img)
-        bin = self.toTensor(bin)
+        bin = self.toTensor(_bin)
         ins = self.toTensor(ins)
 
         # normalize
@@ -127,14 +136,19 @@ class tuSimpleDataset(Dataset):
         bin_path = osp.join(self.root, bin_path)
         ins_path = osp.join(self.root, ins_path)
 
-        img = np.array(Image.open(img_path))
-        bin = np.array(Image.open(bin_path))
-        ins = np.array(Image.open(ins_path))
+        img = Image.open(img_path)
+        bin = Image.open(bin_path)
+        ins = Image.open(ins_path)
 
         if self.mode == 'train':
             img, bin, ins = self.transform_train(img, bin, ins)
+            bin = bin.squeeze(0)
         elif self.mode == 'test':
             img, bin, ins = self.transform_test(img, bin, ins)
+        else:
+            img = np.array(img)
+            bin = np.array(bin)
+            ins = np.array(ins)
 
         return {
             'image': img,

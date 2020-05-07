@@ -2,6 +2,7 @@
 model/saved_model
 notebook/torching.ipynb
 tmp
+output
 
 # dev
 .vscode

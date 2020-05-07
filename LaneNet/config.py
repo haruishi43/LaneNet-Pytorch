@@ -52,7 +52,7 @@ _C.TRAIN.lr_scheduler = 'single_step'
 _C.TRAIN.step_size = 50
 _C.TRAIN.gamma = 0.1
 # 
-_C.save_dir = 'log'
+_C.save_dir = 'logs'
 _C.checkpoint_path = 'log/model.pth.tar-60'
 
 

@@ -192,14 +192,15 @@ class FCNDecoder(nn.Module):
         self._out_channel = 64
         self._decode_layers = decode_layers
 
-        self._conv_layers = []
+        _conv_layers = []
         for _ch in self._decode_channels:
-            self._conv_layers.append(
+            _conv_layers.append(
                 nn.Conv2d(
                     _ch, self._out_channel,
                     kernel_size=1, bias=False
                 )
             )
+        self._conv_layers = nn.ModuleList(_conv_layers)
 
         self._conv_final = nn.Conv2d(
             self._out_channel, 2,

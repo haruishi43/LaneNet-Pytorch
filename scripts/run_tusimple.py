@@ -106,7 +106,7 @@ def run_exp(exp_config: str, run_type: str, opts=None) -> None:
 
         model = LaneNet()
         if config.use_gpu:
-            model = model.cuda()
+            model.cuda()
 
         #TODO: resume from checkpoint
 
@@ -162,7 +162,7 @@ def run_exp(exp_config: str, run_type: str, opts=None) -> None:
 
         model = LaneNet()
         if config.use_gpu:
-            model = model.cuda()
+            model.cuda()
 
         assert osp.exists(config.checkpoint_path)
         load_pretrained_weights(model, config.checkpoint_path)

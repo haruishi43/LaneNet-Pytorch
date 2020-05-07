@@ -17,12 +17,6 @@ from LaneNet.models import LaneNet
 from LaneNet.engines import Engine
 
 
-def save_model(save_path, epoch, model):
-    save_name = os.path.join(save_path, f'{epoch}_checkpoint.pth')
-    torch.save(model, save_name)
-    print("model is saved: {}".format(save_name))
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(

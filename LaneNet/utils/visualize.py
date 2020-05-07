@@ -12,13 +12,13 @@ def compose_img(image_data, out, binary_label, pix_embedding, instance_label, i)
     val_out[:, :, 0] = val_pred
     val_out[:, :, 1] = val_label
     val_gt[val_out == 255] = 255
-    # epsilon = 1e-5
-    # pix_embedding = pix_embedding[i].data.cpu().numpy()
-    # pix_vec = pix_embedding / (np.sum(pix_embedding, axis=0, keepdims=True) + epsilon) * 255
-    # pix_vec = np.round(pix_vec).astype(np.uint8).transpose(1, 2, 0)
+    epsilon = 1e-5
+    pix_embedding = pix_embedding[i].data.cpu().numpy()
+    pix_vec = pix_embedding / (np.sum(pix_embedding, axis=0, keepdims=True) + epsilon) * 255
+    pix_vec = np.round(pix_vec).astype(np.uint8).transpose(1, 2, 0)
+    #FIXME: fix instance segmentation map visualization
     # ins_label = instance_label[i].data.cpu().numpy().transpose(0, 1)
     # ins_label = np.repeat(np.expand_dims(ins_label, -1), 3, -1)
     # val_img = np.concatenate((val_gt, pix_vec, ins_label), axis=0)
-    # val_img = np.concatenate((val_gt, pix_vec), axis=0)
-    # return val_img
-    return val_gt
+    val_img = np.concatenate((val_gt, pix_vec), axis=0)
+    return val_img

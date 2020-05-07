@@ -14,14 +14,17 @@ def compute_loss(net_output, binary_label, instance_label):
     ce_loss_fn = nn.CrossEntropyLoss()
     binary_seg_logits = net_output["binary_seg_logits"]
     binary_loss = ce_loss_fn(binary_seg_logits, binary_label)
+    # binary loss OK
 
     pix_embedding = net_output["instance_seg_logits"]
     ds_loss_fn = DiscriminativeLoss(0.5, 1.5, 1.0, 1.0, 0.001)
     var_loss, dist_loss, reg_loss = ds_loss_fn(pix_embedding, instance_label)
+    
     binary_loss = binary_loss * k_binary
-    instance_loss = var_loss * k_instance
-    dist_loss = dist_loss * k_dist
+    instance_loss = var_loss * k_instance  # not OK
+    dist_loss = dist_loss * k_dist  # not OK
     total_loss = binary_loss + instance_loss + dist_loss
+    
     out = net_output["binary_seg_pred"]
     iou = 0
     batch_size = out.size()[0]
@@ -72,9 +75,12 @@ class DiscriminativeLoss(_Loss):
         batch_size = embedding.shape[0]
         embed_dim = embedding.shape[1]
 
-        var_loss = torch.tensor(0, dtype=embedding.dtype, device=embedding.device)
-        dist_loss = torch.tensor(0, dtype=embedding.dtype, device=embedding.device)
-        reg_loss = torch.tensor(0, dtype=embedding.dtype, device=embedding.device)
+        var_loss = torch.tensor(
+            0, dtype=embedding.dtype, device=embedding.device)
+        dist_loss = torch.tensor(
+            0, dtype=embedding.dtype, device=embedding.device)
+        reg_loss = torch.tensor(
+            0, dtype=embedding.dtype, device=embedding.device)
 
         for b in range(batch_size):
             embedding_b = embedding[b]  # (embed_dim, H, W)
@@ -104,8 +110,11 @@ class DiscriminativeLoss(_Loss):
                 centroid_mean.append(mean_i)
 
                 # ---------- var_loss -------------
-                var_loss = var_loss + torch.mean(F.relu(
-                    torch.norm(embedding_i - mean_i, dim=0) - self.delta_var) ** 2) / num_lanes
+                var_loss = var_loss + torch.mean(
+                    F.relu(
+                        torch.norm(embedding_i - mean_i, dim=0) - self.delta_var
+                    ) ** 2) / num_lanes
+            
             centroid_mean = torch.stack(centroid_mean)  # (n_lane, embed_dim)
 
             if num_lanes > 1:

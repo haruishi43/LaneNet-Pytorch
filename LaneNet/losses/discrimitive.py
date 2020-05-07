@@ -7,17 +7,18 @@ from torch.nn.modules.loss import _Loss
 
 
 def compute_loss(net_output, binary_label, instance_label):
+
     k_binary = 0.7
     k_instance = 0.3
     k_dist = 1.0
 
     ce_loss_fn = nn.CrossEntropyLoss()
-    binary_seg_logits = net_output["binary_seg_logits"]
-    binary_loss = ce_loss_fn(binary_seg_logits, binary_label)
-    # binary loss OK
+    ds_loss_fn = DiscriminativeLoss(0.5, 1.5, 2, 1.0, 0.001)
 
+    binary_seg_logits = net_output["binary_seg_logits"]
     pix_embedding = net_output["instance_seg_logits"]
-    ds_loss_fn = DiscriminativeLoss(0.5, 1.5, 1.0, 1.0, 0.001)
+    
+    binary_loss = ce_loss_fn(binary_seg_logits, binary_label)
     var_loss, dist_loss, reg_loss = ds_loss_fn(pix_embedding, instance_label)
     
     binary_loss = binary_loss * k_binary
@@ -68,7 +69,6 @@ class DiscriminativeLoss(_Loss):
         assert self.norm in [1, 2]
 
     def forward(self, input, target):
-        # _assert_no_grad(target)
         return self._discriminative_loss(input, target)
 
     def _discriminative_loss(self, embedding, seg_gt):
@@ -121,8 +121,11 @@ class DiscriminativeLoss(_Loss):
                 centroid_mean1 = centroid_mean.reshape(-1, 1, embed_dim)
                 centroid_mean2 = centroid_mean.reshape(1, -1, embed_dim)
                 dist = torch.norm(centroid_mean1 - centroid_mean2, dim=2)  # shape (num_lanes, num_lanes)
-                dist = dist + torch.eye(num_lanes, dtype=dist.dtype,
-                                        device=dist.device) * self.delta_dist  # diagonal elements are 0, now mask above delta_d
+                dist = dist + torch.eye(
+                    num_lanes,
+                    dtype=dist.dtype,
+                    device=dist.device
+                ) * self.delta_dist  # diagonal elements are 0, now mask above delta_d
 
                 # divided by two for double calculated loss above, for implementation convenience
                 dist_loss = dist_loss + torch.sum(F.relu(-dist + self.delta_dist) ** 2) / (
@@ -135,3 +138,18 @@ class DiscriminativeLoss(_Loss):
         dist_loss = dist_loss / batch_size
         reg_loss = reg_loss / batch_size
         return var_loss, dist_loss, reg_loss
+
+
+if __name__ == "__main__":
+    print('test discriminative')
+    
+    batch_size = 1
+    labels = 5
+    height = 256
+    width = 512
+    input = torch.ones((batch_size, labels, height, width))
+    target = torch.ones((batch_size, labels, height, width))
+
+    ds_loss_fn = DiscriminativeLoss(0.5, 1.5, 1, 1.0, 0.001)
+
+    var_loss, dist_loss, reg_loss = ds_loss_fn(input, target)

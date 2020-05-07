@@ -20,5 +20,7 @@ def compose_img(image_data, out, binary_label, pix_embedding, instance_label, i)
     # ins_label = instance_label[i].data.cpu().numpy().transpose(0, 1)
     # ins_label = np.repeat(np.expand_dims(ins_label, -1), 3, -1)
     # val_img = np.concatenate((val_gt, pix_vec, ins_label), axis=0)
-    val_img = np.concatenate((val_gt, pix_vec), axis=0)
-    return val_img
+    
+    # val_img = np.concatenate((val_gt, pix_vec), axis=0)
+    # return val_img
+    return val_gt
